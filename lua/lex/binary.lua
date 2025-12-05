@@ -16,18 +16,21 @@ local OS_NAME = UNAME.sysname:lower()
 local MACHINE = (UNAME.machine or ''):lower()
 local IS_WINDOWS = OS_NAME:find('windows') ~= nil
 
+-- GitHub repository for lex-lsp binary releases
+local RELEASE_REPO = 'lex-fmt/editors'
+
 local PLATFORM_ASSETS = {
   linux = {
-    amd64 = { filename = 'lex-lsp-x86_64-unknown-linux-gnu.tar.xz', kind = 'tar.xz' },
-    arm64 = { filename = 'lex-lsp-aarch64-unknown-linux-gnu.tar.xz', kind = 'tar.xz' },
+    amd64 = { filename = 'lex-lsp-x86_64-unknown-linux-gnu.tar.gz', kind = 'tar.gz' },
+    arm64 = { filename = 'lex-lsp-aarch64-unknown-linux-gnu.tar.gz', kind = 'tar.gz' },
   },
   darwin = {
-    amd64 = { filename = 'lex-lsp-x86_64-apple-darwin.tar.xz', kind = 'tar.xz' },
-    arm64 = { filename = 'lex-lsp-aarch64-apple-darwin.tar.xz', kind = 'tar.xz' },
+    amd64 = { filename = 'lex-lsp-x86_64-apple-darwin.tar.gz', kind = 'tar.gz' },
+    arm64 = { filename = 'lex-lsp-aarch64-apple-darwin.tar.gz', kind = 'tar.gz' },
   },
   windows = {
     amd64 = { filename = 'lex-lsp-x86_64-pc-windows-msvc.zip', kind = 'zip' },
-    arm64 = { filename = 'lex-lsp-aarch64-pc-windows-msvc.zip', kind = 'zip' },
+    -- Note: arm64 Windows not currently built, falls back to amd64
   },
 }
 
@@ -148,7 +151,7 @@ local function download_release(tag, dest)
     return nil, 'unsupported platform for automatic lex-lsp download'
   end
 
-  local base = 'https://github.com/arthur-debert/lex/releases/download/%s/%s'
+  local base = 'https://github.com/' .. RELEASE_REPO .. '/releases/download/%s/%s'
   local url = string.format(base, tag, asset.filename)
 
   local tmpdir = with_tempdir()
@@ -200,7 +203,7 @@ local function latest_tag()
   if test_overrides and test_overrides.latest_tag then
     return test_overrides.latest_tag()
   end
-  local api_url = 'https://api.github.com/repos/arthur-debert/lex/releases/latest'
+  local api_url = 'https://api.github.com/repos/' .. RELEASE_REPO .. '/releases/latest'
   local output, err = run_cmd({ 'curl', '-sSL', api_url })
   if err then
     return nil
