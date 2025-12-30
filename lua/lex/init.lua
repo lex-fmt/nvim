@@ -22,6 +22,12 @@ M.lex_lsp_version = "v0.2.2"
 
 -- Resolve which lex-lsp binary to execute.
 local function resolve_lsp_cmd(opts)
+  -- Environment variable takes precedence (for local development)
+  local env_path = vim.env.LEX_LSP_PATH
+  if env_path and env_path ~= "" then
+    return { env_path }
+  end
+
   if opts.cmd then
     return opts.cmd
   end
