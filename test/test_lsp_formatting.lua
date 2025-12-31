@@ -12,7 +12,7 @@ end
 
 local configs = require("lspconfig.configs")
 local project_root = vim.fn.fnamemodify(plugin_dir, ":h:h")
-local lex_lsp_path = project_root .. "/target/debug/lex-lsp"
+local exe = vim.fn.exepath("lex-lsp"); local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (project_root .. "/target/debug/lex-lsp")
 local lex_cli_path = project_root .. "/target/debug/lex"
 
 local function fail(msg)

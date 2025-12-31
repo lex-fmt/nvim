@@ -82,9 +82,8 @@ vim.filetype.add({
 -- The actual plugin logic (LSP config, semantic tokens) is in lua/lex/init.lua
 local project_root = vim.fn.fnamemodify(plugin_dir, ":h:h")
 -- Check for lex-lsp in order: LEX_LSP_PATH env var, system PATH, local build
-local lex_lsp_path = vim.env.LEX_LSP_PATH
-  or vim.fn.exepath("lex-lsp")
-  or (project_root .. "/target/debug/lex-lsp")
+local exe = vim.fn.exepath("lex-lsp")
+local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (project_root .. "/target/debug/lex-lsp")
 
 -- Debug: verify paths (set DEBUG_LEX_INIT=1 to enable)
 if vim.env.DEBUG_LEX_INIT then
