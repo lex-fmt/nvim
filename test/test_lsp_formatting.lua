@@ -1,8 +1,18 @@
 -- Test: LSP document and range formatting functionality
+-- This test requires the lex CLI which is not available in CI, so it will skip
 
 local script_path = debug.getinfo(1).source:sub(2)
 local test_dir = vim.fn.fnamemodify(script_path, ":p:h")
 local plugin_dir = vim.fn.fnamemodify(test_dir, ":h")
+local project_root = vim.fn.fnamemodify(plugin_dir, ":h:h")
+
+-- Check if lex CLI is available FIRST - skip test early if not
+local exe_cli = vim.fn.exepath("lex")
+local lex_cli_path = (exe_cli and exe_cli ~= "" and exe_cli) or (project_root .. "/target/debug/lex")
+if vim.fn.filereadable(lex_cli_path) ~= 1 then
+  print("TEST_PASSED: (skipped - lex CLI not available)")
+  vim.cmd("qall!")
+end
 
 local lspconfig_ok, lspconfig = pcall(require, "lspconfig")
 if not lspconfig_ok then
@@ -11,9 +21,8 @@ if not lspconfig_ok then
 end
 
 local configs = require("lspconfig.configs")
-local project_root = vim.fn.fnamemodify(plugin_dir, ":h:h")
-local exe = vim.fn.exepath("lex-lsp"); local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (project_root .. "/target/debug/lex-lsp")
-local lex_cli_path = project_root .. "/target/debug/lex"
+local exe = vim.fn.exepath("lex-lsp")
+local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (project_root .. "/target/debug/lex-lsp")
 
 local function fail(msg)
   print("TEST_FAILED: " .. msg)
@@ -22,15 +31,6 @@ end
 
 if vim.fn.filereadable(lex_lsp_path) ~= 1 then
   fail("lex-lsp binary not found at " .. lex_lsp_path)
-end
-
--- Check if lex CLI exists - skip test if not (CI doesn't have it)
-local exe_cli = vim.fn.exepath("lex")
-if exe_cli and exe_cli ~= "" then
-  lex_cli_path = exe_cli
-elseif vim.fn.filereadable(lex_cli_path) ~= 1 then
-  print("TEST_PASSED: (skipped - lex CLI not available)")
-  vim.cmd("qall!")
 end
 
 if not configs.lex_lsp then
