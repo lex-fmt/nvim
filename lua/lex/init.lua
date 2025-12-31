@@ -17,8 +17,8 @@ local M = {}
 
 -- Plugin version + pinned lex-lsp version (used by binary manager).
 -- lex-lsp binaries are downloaded from https://github.com/lex-fmt/editors/releases
-M.version = "0.3.2"
-M.lex_lsp_version = "0.2.4"
+M.version = "0.3.3"
+M.lex_lsp_version = "lex-lsp-v0.2.7"
 
 -- Resolve which lex-lsp binary to execute.
 local function resolve_lsp_cmd(opts)
