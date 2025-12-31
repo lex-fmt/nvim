@@ -1,6 +1,8 @@
 -- Test: LSP document and range formatting functionality
 -- This test requires the lex CLI which is not available in CI, so it will skip
 
+print("DEBUG: formatting test starting")
+
 local script_path = debug.getinfo(1).source:sub(2)
 local test_dir = vim.fn.fnamemodify(script_path, ":p:h")
 local plugin_dir = vim.fn.fnamemodify(test_dir, ":h")
