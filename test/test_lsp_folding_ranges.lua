@@ -57,13 +57,25 @@ vim.filetype.add({
   },
 })
 
--- Use verified LSP fixture from specs
-local test_file = project_root .. "/specs/v1/benchmark/050-lsp-fixture.lex"
-
-if vim.fn.filereadable(test_file) ~= 1 then
-  print("TEST_FAILED: LSP fixture not found at " .. test_file)
-  vim.cmd("cquit 1")
-end
+-- Create a test .lex file with content for folding ranges
+local test_file = vim.fn.tempname() .. ".lex"
+local test_content = {
+  "# Document Title",
+  "Section One:",
+  "",
+  "  Content of section one.",
+  "  More content.",
+  "",
+  "Section Two:",
+  "",
+  "  Content of section two.",
+  "",
+  "  :: note ::",
+  "    This is an annotation that should be foldable.",
+  "    With multiple lines.",
+  "",
+}
+vim.fn.writefile(test_content, test_file)
 
 -- Open the file
 vim.cmd("edit " .. test_file)
