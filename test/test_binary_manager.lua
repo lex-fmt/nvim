@@ -62,11 +62,11 @@ end)
 
 add_test('selects architecture specific assets', function()
   local select_asset = binary._select_asset_for_testing
-  assert_true(select_asset('darwin', 'arm64').filename == 'lex-lsp-aarch64-apple-darwin.tar.xz', 'mac arm64 asset mismatch')
-  assert_true(select_asset('darwin', 'x86_64').filename == 'lex-lsp-x86_64-apple-darwin.tar.xz', 'mac amd64 asset mismatch')
-  assert_true(select_asset('linux', 'aarch64').filename == 'lex-lsp-aarch64-unknown-linux-gnu.tar.xz', 'linux arm64 asset mismatch')
-  assert_true(select_asset('linux', 'x86_64').filename == 'lex-lsp-x86_64-unknown-linux-gnu.tar.xz', 'linux amd64 asset mismatch')
-  assert_true(select_asset('windows', 'arm64').filename == 'lex-lsp-aarch64-pc-windows-msvc.zip', 'windows arm64 asset mismatch')
+  assert_true(select_asset('darwin', 'arm64').filename == 'lex-lsp-aarch64-apple-darwin.tar.gz', 'mac arm64 asset mismatch')
+  assert_true(select_asset('darwin', 'x86_64').filename == 'lex-lsp-x86_64-apple-darwin.tar.gz', 'mac amd64 asset mismatch')
+  assert_true(select_asset('linux', 'aarch64').filename == 'lex-lsp-aarch64-unknown-linux-gnu.tar.gz', 'linux arm64 asset mismatch')
+  assert_true(select_asset('linux', 'x86_64').filename == 'lex-lsp-x86_64-unknown-linux-gnu.tar.gz', 'linux amd64 asset mismatch')
+  -- Note: arm64 Windows not currently built, so we only test amd64
   assert_true(select_asset('windows', 'amd64').filename == 'lex-lsp-x86_64-pc-windows-msvc.zip', 'windows amd64 asset mismatch')
 end)
 
