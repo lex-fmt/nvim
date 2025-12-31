@@ -40,9 +40,11 @@ jobs:
           chmod +x /usr/local/bin/lex-lsp
 
       - name: Run tests
+        env:
+          TERM: dumb
         run: |
           cd test
-          ./run_suite.sh --format=simple
+          bats lex_nvim_plugin.bats --formatter tap
 
   lint:
     name: Lua Lint
@@ -53,7 +55,7 @@ jobs:
       - name: Install luacheck
         run: |
           sudo apt-get update
-          sudo apt-get install -y lua5.3 luarocks
+          sudo apt-get install -y lua5.3 liblua5.3-dev luarocks
           sudo luarocks install luacheck
 
       - name: Run luacheck
