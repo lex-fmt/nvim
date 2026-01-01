@@ -16,7 +16,7 @@ local commands = require("lex.commands")
 local M = {}
 
 -- Plugin version (lex-lsp version read from shared/lex-deps.json)
-M.version = "0.3.3"
+M.version = "0.3.4"
 
 -- Read lex-lsp version from shared/lex-deps.json
 local function read_lex_deps()
