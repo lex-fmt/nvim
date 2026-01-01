@@ -15,23 +15,119 @@ local commands = require("lex.commands")
 
 local M = {}
 
--- Plugin version + pinned lex-lsp version (used by binary manager).
--- lex-lsp binaries are downloaded from https://github.com/lex-fmt/editors/releases
+-- Plugin version (lex-lsp version read from shared/lex-deps.json)
 M.version = "0.3.3"
-M.lex_lsp_version = "lex-lsp-v0.2.7"
 
--- Resolve which lex-lsp binary to execute.
-local function resolve_lsp_cmd(opts)
-  -- Environment variable takes precedence (for local development)
-  local env_path = vim.env.LEX_LSP_PATH
-  if env_path and env_path ~= "" then
-    return { env_path }
+-- Read lex-lsp version from shared/lex-deps.json
+local function read_lex_deps()
+  local plugin_root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h:h:h")
+  local deps_file = plugin_root .. "/shared/lex-deps.json"
+
+  local file = io.open(deps_file, "r")
+  if not file then
+    return nil
   end
 
+  local content = file:read("*a")
+  file:close()
+
+  local ok, deps = pcall(vim.json.decode, content)
+  if not ok or type(deps) ~= "table" then
+    return nil
+  end
+
+  return deps
+end
+
+-- Get pinned lex-lsp version from shared/lex-deps.json
+local function get_pinned_lsp_version()
+  local deps = read_lex_deps()
+  if deps and deps["lex-lsp"] then
+    return deps["lex-lsp"]
+  end
+  -- Fallback if deps file not found
+  return "lex-lsp-v0.2.7"
+end
+
+-- For backwards compatibility
+M.lex_lsp_version = get_pinned_lsp_version()
+
+-- Detect the lex workspace root by looking for the characteristic structure:
+-- a directory containing core/, editors/, tools/ subdirectories.
+-- Returns nil if not in a lex workspace.
+local function detect_lex_workspace()
+  local override = vim.env.LEX_WORKSPACE_ROOT
+  if override and override ~= "" and vim.fn.isdirectory(override) == 1 then
+    return override
+  end
+
+  -- Start from plugin directory and look for parent workspace
+  local plugin_root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h:h:h")
+  local current = plugin_root
+
+  while current ~= "/" and current ~= "" do
+    local parent = vim.fn.fnamemodify(current, ":h")
+    if
+      vim.fn.isdirectory(parent .. "/core") == 1
+      and vim.fn.isdirectory(parent .. "/editors") == 1
+      and vim.fn.isdirectory(parent .. "/tools") == 1
+    then
+      return parent
+    end
+    current = parent
+  end
+
+  return nil
+end
+
+-- Resolve which lex-lsp binary to execute.
+-- Priority:
+-- 1. LEX_LSP_PATH env var (explicit override)
+-- 2. Workspace binary at {workspace}/target/local/lex-lsp (dev convenience)
+-- 3. opts.cmd (user override)
+-- 4. Auto-download pinned version
+-- 5. Fallback: lex-lsp in PATH
+local function resolve_lsp_cmd(opts)
+  local is_windows = vim.fn.has("win32") == 1
+  local binary_name = is_windows and "lex-lsp.exe" or "lex-lsp"
+
+  -- 1. Environment variable takes precedence (for CI and explicit override)
+  local env_path = vim.env.LEX_LSP_PATH
+  if env_path and env_path ~= "" then
+    if vim.fn.filereadable(env_path) == 1 then
+      return { env_path }
+    end
+    vim.notify(
+      string.format("LEX_LSP_PATH set but binary not found: %s", env_path),
+      vim.log.levels.WARN,
+      { title = "Lex" }
+    )
+  end
+
+  -- 2. Check for workspace binary (dev mode)
+  local workspace = detect_lex_workspace()
+  if workspace then
+    local workspace_binary = workspace .. "/target/local/" .. binary_name
+    if vim.fn.filereadable(workspace_binary) == 1 then
+      return { workspace_binary }
+    end
+    -- Workspace detected but no binary - warn but continue to fallback
+    vim.notify(
+      string.format(
+        "Lex workspace detected at %s but no dev binary found. Run ./scripts/build-local.sh to build it.",
+        workspace
+      ),
+      vim.log.levels.WARN,
+      { title = "Lex" }
+    )
+  end
+
+  -- 3. User opts.cmd override
   if opts.cmd then
     return opts.cmd
   end
 
+  -- 4. Auto-download pinned version
   local desired = opts.lex_lsp_version
   if desired == nil then
     desired = M.lex_lsp_version
@@ -44,6 +140,7 @@ local function resolve_lsp_cmd(opts)
     end
   end
 
+  -- 5. Fallback to PATH
   return { "lex-lsp" }
 end
 
