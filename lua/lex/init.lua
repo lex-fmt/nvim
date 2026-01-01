@@ -10,7 +10,7 @@
 
 local binary_manager = require("lex.binary")
 local theme = require("lex.theme")
-local debug = require("lex.debug")
+local lex_debug = require("lex.debug")
 local commands = require("lex.commands")
 
 local M = {}
@@ -18,9 +18,15 @@ local M = {}
 -- Plugin version (lex-lsp version read from shared/lex-deps.json)
 M.version = "0.3.4"
 
+-- Get the plugin root directory
+local function get_plugin_root()
+  local source = debug.getinfo(1, "S").source:sub(2)
+  return vim.fn.fnamemodify(source, ":h:h:h")
+end
+
 -- Read lex-lsp version from shared/lex-deps.json
 local function read_lex_deps()
-  local plugin_root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h:h:h")
+  local plugin_root = get_plugin_root()
   local deps_file = plugin_root .. "/shared/lex-deps.json"
 
   local file = io.open(deps_file, "r")
@@ -62,7 +68,7 @@ local function detect_lex_workspace()
   end
 
   -- Start from plugin directory and look for parent workspace
-  local plugin_root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h:h:h")
+  local plugin_root = get_plugin_root()
   local current = plugin_root
 
   while current ~= "/" and current ~= "" do
@@ -204,7 +210,7 @@ function M.setup(opts)
   end
 
   -- Setup debug commands
-  debug.setup()
+  lex_debug.setup()
 
   -- Setup user commands (global, not buffer-specific)
   commands.setup()
