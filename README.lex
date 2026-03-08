@@ -15,8 +15,7 @@ Neovim plugin for reading and writing Lex, the plain-text format for ideas, docu
                 require("lex").setup()
             end,
         }
-    :: lua
-
+    :: lua ::
     1.2. With packer.nvim
 
         use {
@@ -26,8 +25,7 @@ Neovim plugin for reading and writing Lex, the plain-text format for ideas, docu
                 require("lex").setup()
             end,
         }
-    :: lua
-
+    :: lua ::
     The plugin auto-downloads the lex-lsp binary on first use.
 
 2. Configuration
@@ -43,8 +41,7 @@ Neovim plugin for reading and writing Lex, the plain-text format for ideas, docu
                 end,
             },
         })
-    :: lua
-
+    :: lua ::
 3. Themes
 
     Lex is a strong opinionated format about legibility and ergonomics, and breaks common expectations by setting it's own theme. Lex's mission is to make reading and writing plain text, richly formatted documents, with less clutter.
@@ -56,8 +53,7 @@ Neovim plugin for reading and writing Lex, the plain-text format for ideas, docu
             require("lex").setup({
                 theme = "native",
             })
-    :: lua
-
+    :: lua ::
     Mappings:
     - Headings -> @markup.heading
     - Bold/Italic -> @markup.strong, @markup.italic
@@ -81,8 +77,7 @@ Neovim plugin for reading and writing Lex, the plain-text format for ideas, docu
     Override base intensity groups to change all elements at that level:
         vim.api.nvim_set_hl(0, "@lex.muted", { fg = "#666666" })
         vim.api.nvim_set_hl(0, "@lex.faint", { fg = "#999999" })
-    :: lua
-
+    :: lua ::
     The list of groups and highlights:
 
     Base intensity groups (override these to change all elements at that level):
@@ -145,9 +140,7 @@ Neovim plugin for reading and writing Lex, the plain-text format for ideas, docu
             cmd = { "/path/to/lex-lsp" },
 
         })
-    :: lua
-
-
+    :: lua ::
 6. The Lex format
 
   Lex is designed to make writing structured techinical documents with no toolling a breeze. 

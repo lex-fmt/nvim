@@ -20,8 +20,5 @@
 
     :: note ::
         Definition reference footnote.
-    ::
-
-Notes
-
+    :: Notes ::
 1. Footnote note content.

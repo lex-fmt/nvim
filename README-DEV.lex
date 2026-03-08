@@ -28,8 +28,7 @@ For user documentation, see README.lex.
             else
                 -- Fall back to vim.ui.input with path completion
             end
-        :: lua
-
+        :: lua ::
     2.2. Export Commands (Markdown, HTML, PDF)
 
         VS Code shows a save dialog for export destination.
