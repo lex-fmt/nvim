@@ -16,7 +16,7 @@ local commands = require("lex.commands")
 local M = {}
 
 -- Plugin version (lex-lsp version read from shared/lex-deps.json)
-M.version = "0.3.7"
+M.version = "0.3.8"
 
 -- Get the plugin root directory
 local function get_plugin_root()
@@ -52,7 +52,7 @@ local function get_pinned_lsp_version()
     return deps["lex-lsp"]
   end
   -- Fallback if deps file not found
-  return "v0.2.9"
+  return "v0.3.0"
 end
 
 -- For backwards compatibility
