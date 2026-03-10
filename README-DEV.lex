@@ -80,11 +80,11 @@ For user documentation, see README.lex.
         :LexResolveAnnotation   Resolve annotation at cursor
         :LexToggleAnnotations   Toggle all annotations resolved/unresolved
 
-    Export/Import:
+    Export/Convert:
         :LexExportMarkdown [path]   Export to Markdown
         :LexExportHtml [path]       Export to HTML
         :LexExportPdf [path]        Export to PDF
-        :LexImportMarkdown          Import current Markdown buffer to Lex
+        :LexConvertToLex            Convert current buffer (Markdown) to Lex
 
     Debug:
         :LexDebugToken          Show semantic token under cursor
