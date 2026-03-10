@@ -16,7 +16,7 @@ local commands = require("lex.commands")
 local M = {}
 
 -- Plugin version (lex-lsp version read from shared/lex-deps.json)
-M.version = "0.3.10"
+M.version = "0.3.11"
 
 -- Get the plugin root directory
 local function get_plugin_root()
