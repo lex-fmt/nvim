@@ -209,6 +209,19 @@ function M.setup(opts)
     lspconfig.lex_lsp.setup(lsp_config)
   end
 
+  -- Register file icon with nvim-web-devicons if available
+  local icons_ok, icons = pcall(require, "nvim-web-devicons")
+  if icons_ok then
+    icons.set_icon({
+      lex = {
+        icon = "⬡",
+        color = "#231f20",
+        cterm_color = "235",
+        name = "Lex",
+      },
+    })
+  end
+
   -- Setup debug commands
   lex_debug.setup()
 
