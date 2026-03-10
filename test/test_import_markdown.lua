@@ -1,23 +1,23 @@
--- Test: Import markdown command via LSP
+-- Test: Convert to Lex command via LSP
 
 local script_path = debug.getinfo(1).source:sub(2)
 local test_dir = vim.fn.fnamemodify(script_path, ":p:h")
 local plugin_dir = vim.fn.fnamemodify(test_dir, ":h")
 local project_root = vim.fn.fnamemodify(plugin_dir, ":h:h")
 
--- Test that the commands module loads and has the import function
+-- Test that the commands module loads and has the convert function
 local ok, commands = pcall(require, "lex.commands")
 if not ok then
   print("TEST_FAILED: Could not load lex.commands module: " .. tostring(commands))
   vim.cmd("cquit 1")
 end
 
-if type(commands.import_markdown) ~= "function" then
-  print("TEST_FAILED: commands.import_markdown is not a function")
+if type(commands.convert_to_lex) ~= "function" then
+  print("TEST_FAILED: commands.convert_to_lex is not a function")
   vim.cmd("cquit 1")
 end
 
-print("TEST_PASSED: commands module exports import_markdown function")
+print("TEST_PASSED: commands module exports convert_to_lex function")
 
 -- Test that user command is registered
 commands.setup()
@@ -27,12 +27,12 @@ local function command_exists(name)
   return cmds[name] ~= nil
 end
 
-if not command_exists("LexImportMarkdown") then
-  print("TEST_FAILED: LexImportMarkdown command not registered")
+if not command_exists("LexConvertToLex") then
+  print("TEST_FAILED: LexConvertToLex command not registered")
   vim.cmd("cquit 1")
 end
 
-print("TEST_PASSED: LexImportMarkdown user command is registered")
+print("TEST_PASSED: LexConvertToLex user command is registered")
 
 -- Set up LSP for actual import test
 vim.filetype.add({ extension = { md = "markdown", lex = "lex" } })
@@ -84,7 +84,7 @@ end
 
 print("TEST_PASSED: LSP client attached")
 
--- Test import via LSP
+-- Test import markdown via LSP
 local md_content = [[# Test
 
 This is a test document for import.
@@ -110,9 +110,8 @@ if type(lex_output) ~= "string" or lex_output == "" then
   vim.cmd("cquit 1")
 end
 
--- Check that the lex output contains expected content
 if not lex_output:match("Test") then
-  print("TEST_FAILED: lex output doesn't contain expected content")
+  print("TEST_FAILED: lex output doesn't contain expected content from markdown")
   vim.cmd("cquit 1")
 end
 
@@ -121,5 +120,5 @@ print("TEST_PASSED: lex.import markdown via LSP works")
 -- Clean up
 vim.fn.delete(temp_lex)
 
-print("TEST_PASSED: All import markdown tests passed")
+print("TEST_PASSED: All convert to lex tests passed")
 vim.cmd("qall!")

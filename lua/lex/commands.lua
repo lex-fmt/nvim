@@ -306,7 +306,12 @@ function M.export_pdf(opts)
   export_to_format("pdf", opts.fargs and opts.fargs[1])
 end
 
-function M.import_markdown()
+-- Supported filetypes for conversion to Lex
+local convertible_filetypes = {
+  markdown = "markdown",
+}
+
+function M.convert_to_lex()
   local client = get_lex_client()
   if not client then
     vim.notify("Lex LSP not attached", vim.log.levels.WARN)
@@ -319,8 +324,10 @@ function M.import_markdown()
     return
   end
 
-  if vim.bo.filetype ~= "markdown" then
-    vim.notify("Import is only available for Markdown files", vim.log.levels.ERROR)
+  local format = convertible_filetypes[vim.bo.filetype]
+  if not format then
+    local supported = table.concat(vim.tbl_keys(convertible_filetypes), ", ")
+    vim.notify("Convert to Lex is available for: " .. supported, vim.log.levels.ERROR)
     return
   end
 
@@ -329,21 +336,21 @@ function M.import_markdown()
   local content = table.concat(lines, "\n")
 
   -- Call LSP import command: [format, content]
-  local result = execute_lsp_command("lex.import", { "markdown", content })
+  local result = execute_lsp_command("lex.import", { format, content })
 
   if not result then
-    vim.notify("Import failed", vim.log.levels.ERROR)
+    vim.notify("Convert to Lex failed", vim.log.levels.ERROR)
     return
   end
 
   -- Write to .lex file and open it
-  local target_path = buf_name:gsub("%.md$", "") .. ".lex"
+  local target_path = buf_name:gsub("%.[^.]+$", "") .. ".lex"
   local file = io.open(target_path, "w")
   if file then
     file:write(result)
     file:close()
     vim.cmd("edit " .. target_path)
-    vim.notify("Imported to " .. target_path, vim.log.levels.INFO)
+    vim.notify("Converted to " .. target_path, vim.log.levels.INFO)
   else
     vim.notify("Failed to write output file", vim.log.levels.ERROR)
   end
@@ -389,8 +396,8 @@ function M.setup()
     complete = "file",
     desc = "Export to PDF",
   })
-  vim.api.nvim_create_user_command("LexImportMarkdown", M.import_markdown, {
-    desc = "Import current Markdown buffer to Lex",
+  vim.api.nvim_create_user_command("LexConvertToLex", M.convert_to_lex, {
+    desc = "Convert current buffer (Markdown) to Lex",
   })
 end
 
