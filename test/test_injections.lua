@@ -42,7 +42,7 @@ vim.treesitter.language.add("lex", { path = so_path })
 
 -- Open the injection fixture
 vim.filetype.add({ extension = { lex = "lex" } })
-local fixture = test_dir .. "/fixtures/verbatim_injection.lex"
+local fixture = plugin_dir .. "/comms/specs/benchmark/060-injection-multilang.lex"
 vim.cmd("edit " .. fixture)
 vim.wait(100)
 
