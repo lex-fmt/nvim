@@ -70,8 +70,8 @@ local function count_verbatim(node)
 end
 count_verbatim(root)
 
-if verbatim_count < 3 then
-  print("TEST_FAILED: Expected at least 3 verbatim blocks, found " .. verbatim_count)
+if verbatim_count < 4 then
+  print("TEST_FAILED: Expected at least 4 verbatim blocks, found " .. verbatim_count)
   vim.cmd("cquit 1")
 end
 
@@ -114,7 +114,12 @@ if not injection_langs["json"] then
   vim.cmd("cquit 1")
 end
 
-print("TEST_PASSED: Injection zones detected: python, json")
+if not injection_langs["bash"] then
+  print("TEST_FAILED: No bash injection detected (verbatim group)")
+  vim.cmd("cquit 1")
+end
+
+print("TEST_PASSED: Injection zones detected: python, json, bash (group)")
 
 -- Test 4: Verify no ERROR nodes in the fixture
 local has_error = false
