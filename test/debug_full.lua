@@ -10,7 +10,7 @@ print("Plugin dir: " .. plugin_dir)
 print("Project root: " .. project_root)
 
 -- Open test file
-local test_file = project_root .. "/specs/v1/benchmark/010-kitchensink.lex"
+local test_file = plugin_dir .. "/comms/specs/benchmark/010-kitchensink.lex"
 print("\nOpening: " .. test_file)
 vim.cmd("edit " .. test_file)
 

@@ -5,13 +5,13 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+PLUGIN_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-LEX_FILE="${1:-specs/v1/benchmark/050-lsp-fixture.lex}"
+LEX_FILE="${1:-comms/specs/benchmark/050-lsp-fixture.lex}"
 
 # Make file path absolute if relative
 if [[ ! "$LEX_FILE" = /* ]]; then
-    LEX_FILE="$PROJECT_ROOT/$LEX_FILE"
+    LEX_FILE="$PLUGIN_DIR/$LEX_FILE"
 fi
 
 if [ ! -f "$LEX_FILE" ]; then
@@ -24,8 +24,7 @@ TEMP_SCRIPT=$(mktemp /tmp/nvim_visual_XXXXXX.lua)
 trap "rm -f $TEMP_SCRIPT" EXIT
 
 cat > "$TEMP_SCRIPT" <<'EOF'
-local project_root = "PROJECT_ROOT_PLACEHOLDER"
-local plugin_dir = project_root .. "/editors/nvim"
+local plugin_dir = "PLUGIN_DIR_PLACEHOLDER"
 vim.opt.rtp:prepend(plugin_dir)
 
 -- Enable colors and syntax
@@ -35,7 +34,8 @@ vim.cmd("syntax on")
 -- Set up LSP
 local lspconfig = require("lspconfig")
 local configs = require("lspconfig.configs")
-local lex_lsp_path = project_root .. "/target/debug/lex-lsp"
+local exe = vim.fn.exepath("lex-lsp")
+local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (plugin_dir .. "/target/debug/lex-lsp")
 
 if vim.fn.filereadable(lex_lsp_path) ~= 1 then
   print("ERROR: lex-lsp binary not found at " .. lex_lsp_path)
@@ -130,7 +130,7 @@ print("  - References and citations highlighted")
 EOF
 
 # Replace placeholders
-sed -i '' "s|PROJECT_ROOT_PLACEHOLDER|$PROJECT_ROOT|g" "$TEMP_SCRIPT"
+sed -i '' "s|PLUGIN_DIR_PLACEHOLDER|$PLUGIN_DIR|g" "$TEMP_SCRIPT"
 sed -i '' "s|FILE_PLACEHOLDER|$LEX_FILE|g" "$TEMP_SCRIPT"
 
 # Run nvim with the temp script

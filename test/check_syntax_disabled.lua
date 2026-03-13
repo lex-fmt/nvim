@@ -13,7 +13,7 @@ lex.setup({
 })
 
 -- Open a lex file
-vim.cmd("edit " .. project_root .. "/specs/v1/benchmark/010-kitchensink.lex")
+vim.cmd("edit " .. plugin_dir .. "/comms/specs/benchmark/010-kitchensink.lex")
 
 -- Wait for filetype detection
 vim.wait(500)

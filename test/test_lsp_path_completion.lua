@@ -44,7 +44,7 @@ lspconfig.lex_lsp.setup({
 vim.filetype.add({ extension = { lex = "lex" } })
 
 -- Use fixture
-local fixture = project_root .. "/specs/v1/benchmark/050-lsp-fixture.lex"
+local fixture = plugin_dir .. "/comms/specs/benchmark/050-lsp-fixture.lex"
 if vim.fn.filereadable(fixture) ~= 1 then
   print("TEST_FAILED: fixture not found at " .. fixture)
   vim.cmd("cquit 1")

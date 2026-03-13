@@ -25,7 +25,7 @@ lex.setup({
 vim.filetype.add({ extension = { lex = "lex" } })
 
 -- Open test file
-local test_file = project_root .. "/specs/v1/benchmark/050-lsp-fixture.lex"
+local test_file = plugin_dir .. "/comms/specs/benchmark/050-lsp-fixture.lex"
 vim.cmd("edit " .. test_file)
 
 -- Wait for LSP

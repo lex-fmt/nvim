@@ -50,7 +50,7 @@ vim.filetype.add({
 })
 
 -- Open the file
-local test_file = project_root .. "/specs/v1/benchmark/20-ideas-naked.lex"
+local test_file = plugin_dir .. "/comms/specs/benchmark/20-ideas-naked.lex"
 print("Opening: " .. test_file)
 vim.cmd("edit " .. test_file)
 

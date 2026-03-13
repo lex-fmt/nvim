@@ -19,8 +19,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-TEST_FILE="$PROJECT_ROOT/specs/v1/benchmark/010-kitchensink.lex"
+PLUGIN_DIR="$SCRIPT_DIR"
+TEST_FILE="$PLUGIN_DIR/comms/specs/benchmark/010-kitchensink.lex"
 
 # Colors
 GREEN='\033[0;32m'

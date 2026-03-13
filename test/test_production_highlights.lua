@@ -6,7 +6,7 @@ local plugin_dir = vim.fn.fnamemodify(script_path, ":p:h:h")
 local project_root = vim.fn.fnamemodify(plugin_dir, ":h:h")
 
 -- Open a lex file to trigger LSP and highlights
-vim.cmd("edit " .. project_root .. "/specs/v1/benchmark/010-kitchensink.lex")
+vim.cmd("edit " .. plugin_dir .. "/comms/specs/benchmark/010-kitchensink.lex")
 vim.wait(2000) -- Wait for LSP
 
 print("=== PRODUCTION MODE HIGHLIGHTS ===\n")

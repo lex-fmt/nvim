@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run an LSP command on a Lex file at a specific cursor position
 # Usage: ./run_lsp_command.sh <file.lex> <line,col> <lua_command>
-# Example: ./run_lsp_command.sh specs/v1/benchmark/050-lsp-fixture.lex 5,48 "vim.lsp.buf.hover()"
+# Example: ./run_lsp_command.sh comms/specs/benchmark/050-lsp-fixture.lex 5,48 "vim.lsp.buf.hover()"
 
 set -e
 
@@ -9,9 +9,9 @@ if [ $# -ne 3 ]; then
     echo "Usage: $0 <file.lex> <line,col> <lua_command>"
     echo ""
     echo "Examples:"
-    echo "  $0 specs/v1/benchmark/050-lsp-fixture.lex 5,48 'vim.lsp.buf.hover()'"
-    echo "  $0 specs/v1/benchmark/050-lsp-fixture.lex 12,5 'vim.lsp.buf.document_symbol()'"
-    echo "  $0 specs/v1/benchmark/050-lsp-fixture.lex 1,0 'vim.lsp.buf_request_sync(0, \"textDocument/semanticTokens/full\", {textDocument = vim.lsp.util.make_text_document_params()}, 2000)'"
+    echo "  $0 comms/specs/benchmark/050-lsp-fixture.lex 5,48 'vim.lsp.buf.hover()'"
+    echo "  $0 comms/specs/benchmark/050-lsp-fixture.lex 12,5 'vim.lsp.buf.document_symbol()'"
+    echo "  $0 comms/specs/benchmark/050-lsp-fixture.lex 1,0 'vim.lsp.buf_request_sync(0, \"textDocument/semanticTokens/full\", {textDocument = vim.lsp.util.make_text_document_params()}, 2000)'"
     exit 1
 fi
 
@@ -24,11 +24,11 @@ IFS=',' read -r LINE COL <<< "$POSITION"
 
 # Get script directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+PLUGIN_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Make file path absolute if relative
 if [[ ! "$LEX_FILE" = /* ]]; then
-    LEX_FILE="$PROJECT_ROOT/$LEX_FILE"
+    LEX_FILE="$PLUGIN_DIR/$LEX_FILE"
 fi
 
 if [ ! -f "$LEX_FILE" ]; then
@@ -41,11 +41,7 @@ TEMP_SCRIPT=$(mktemp /tmp/nvim_lsp_XXXXXX.lua)
 trap "rm -f $TEMP_SCRIPT" EXIT
 
 cat > "$TEMP_SCRIPT" <<'EOF'
-local project_root = "PROJECT_ROOT_PLACEHOLDER"
-
--- Add plugin directory to runtimepath so we can load theme modules
--- This allows require("themes.lex-dark") to work in the on_attach callback
-local plugin_dir = project_root .. "/editors/nvim"
+local plugin_dir = "PLUGIN_DIR_PLACEHOLDER"
 vim.opt.rtp:prepend(plugin_dir)
 
 -- Enable colors and syntax highlighting for visual testing
@@ -60,7 +56,8 @@ if not lspconfig_ok then
 end
 
 local configs = require("lspconfig.configs")
-local lex_lsp_path = project_root .. "/target/debug/lex-lsp"
+local exe = vim.fn.exepath("lex-lsp")
+local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (plugin_dir .. "/target/debug/lex-lsp")
 
 if vim.fn.filereadable(lex_lsp_path) ~= 1 then
   print("ERROR: lex-lsp binary not found at " .. lex_lsp_path)
@@ -159,7 +156,7 @@ vim.cmd("qall!")
 EOF
 
 # Replace placeholders
-sed -i '' "s|PROJECT_ROOT_PLACEHOLDER|$PROJECT_ROOT|g" "$TEMP_SCRIPT"
+sed -i '' "s|PLUGIN_DIR_PLACEHOLDER|$PLUGIN_DIR|g" "$TEMP_SCRIPT"
 sed -i '' "s|FILE_PLACEHOLDER|$LEX_FILE|g" "$TEMP_SCRIPT"
 sed -i '' "s|LINE_PLACEHOLDER|$LINE|g" "$TEMP_SCRIPT"
 sed -i '' "s|COL_PLACEHOLDER|$COL|g" "$TEMP_SCRIPT"
