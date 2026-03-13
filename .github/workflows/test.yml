@@ -26,18 +26,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bats
 
-      - name: Read pinned lex-lsp version
+      - name: Read pinned versions
         id: deps
         run: |
           LEX_LSP_VERSION=$(jq -r '.["lex-lsp"]' shared/lex-deps.json)
-          echo "version=$LEX_LSP_VERSION" >> $GITHUB_OUTPUT
-          echo "Using lex-lsp version: $LEX_LSP_VERSION"
+          TREE_SITTER_VERSION=$(jq -r '.["tree-sitter"]' shared/lex-deps.json)
+          echo "lsp_version=$LEX_LSP_VERSION" >> $GITHUB_OUTPUT
+          echo "ts_version=$TREE_SITTER_VERSION" >> $GITHUB_OUTPUT
+          echo "Using lex-lsp $LEX_LSP_VERSION, tree-sitter $TREE_SITTER_VERSION"
 
       - name: Download lex-lsp binary
         uses: robinraju/release-downloader@v1.8
         with:
-          repository: lex-fmt/editors
-          tag: ${{ steps.deps.outputs.version }}
+          repository: lex-fmt/lex
+          tag: ${{ steps.deps.outputs.lsp_version }}
           fileName: "lex-lsp-x86_64-unknown-linux-gnu.tar.gz"
           tarBall: false
           zipBall: false
@@ -48,9 +50,25 @@ jobs:
           tar -xzf /tmp/lex-lsp-x86_64-unknown-linux-gnu.tar.gz -C /usr/local/bin/
           chmod +x /usr/local/bin/lex-lsp
 
+      - name: Download tree-sitter source
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: lex-fmt/lex
+          tag: ${{ steps.deps.outputs.ts_version }}
+          fileName: "tree-sitter.tar.gz"
+          tarBall: false
+          zipBall: false
+          out-file-path: /tmp
+
+      - name: Extract tree-sitter source
+        run: |
+          mkdir -p /tmp/tree-sitter-lex
+          tar -xzf /tmp/tree-sitter.tar.gz -C /tmp/tree-sitter-lex
+
       - name: Run tests
         env:
           TERM: dumb
+          LEX_TREESITTER_PATH: /tmp/tree-sitter-lex
         run: |
           cd test
           bats lex_nvim_plugin.bats --formatter tap

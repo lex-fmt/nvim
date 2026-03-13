@@ -12,6 +12,7 @@ local binary_manager = require("lex.binary")
 local theme = require("lex.theme")
 local lex_debug = require("lex.debug")
 local commands = require("lex.commands")
+local treesitter = require("lex.treesitter")
 
 local M = {}
 
@@ -169,6 +170,15 @@ function M.setup(opts)
         name = "Lex",
       },
     })
+  end
+
+  -- Setup tree-sitter (parser + highlighting + injections)
+  local ts_opts = opts.treesitter
+  if ts_opts ~= false then
+    local ts_ok = treesitter.setup(type(ts_opts) == "table" and ts_opts or {})
+    if ts_ok then
+      theme.apply_treesitter(theme_name)
+    end
   end
 
   -- Setup debug commands

@@ -68,6 +68,18 @@ setup() {
     [[ "$output" =~ "TEST_PASSED" ]]
 }
 
+@test "Tree-sitter parser loads and parses" {
+    run nvim --headless -u NONE -l "$SCRIPT_DIR/test_treesitter.lua"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "TEST_PASSED" ]]
+}
+
+@test "Tree-sitter injection zones detected" {
+    run nvim --headless -u NONE -l "$SCRIPT_DIR/test_injections.lua"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "TEST_PASSED" ]]
+}
+
 # Skipped: requires lex CLI which is not available in CI
 # @test "LSP formatting functionality" {
 #     run nvim --headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/test_lsp_formatting.lua"
