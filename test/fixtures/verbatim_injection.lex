@@ -19,3 +19,10 @@
         This is just plain text
         in a verbatim block.
     :: note ::
+
+    A grouped verbatim block (multiple subjects sharing one annotation):
+    Install:
+        $ brew install lex
+    Run:
+        $ lex help
+    :: bash ::
