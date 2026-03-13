@@ -41,7 +41,7 @@ lspconfig.lex_lsp.setup({
 
 vim.filetype.add({ extension = { lex = "lex" } })
 
-local fixture = plugin_dir .. "/test/fixtures/example.lex"
+local fixture = plugin_dir .. "/comms/specs/benchmark/20-ideas-naked.lex"
 if vim.fn.filereadable(fixture) ~= 1 then
   print("TEST_FAILED: fixture not found at " .. fixture)
   vim.cmd("cquit 1")
@@ -88,9 +88,9 @@ local has_local = false
 for _, link in ipairs(links) do
   if link.target then
     local target = link.target
-    if target:match("https://example.com") then
+    if target:match("http://example%.com") then
       has_external = true
-    elseif target:match("guide%.lex") then
+    elseif target:match("hi%-mom%.txt") then
       has_local = true
     end
   end

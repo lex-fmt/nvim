@@ -63,7 +63,7 @@ print("TEST_PASSED: Parser registered with Neovim")
 
 -- Test 3: Parse a fixture file and check for errors
 vim.filetype.add({ extension = { lex = "lex" } })
-local fixture = test_dir .. "/fixtures/example.lex"
+local fixture = plugin_dir .. "/comms/specs/benchmark/050-lsp-fixture.lex"
 vim.cmd("edit " .. fixture)
 vim.wait(100)
 
