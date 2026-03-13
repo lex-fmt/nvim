@@ -40,3 +40,6 @@ luac.out
 *.hex
 
 .DS_Store
+
+# Downloaded binaries and compiled parsers
+bin/

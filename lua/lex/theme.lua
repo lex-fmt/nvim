@@ -115,6 +115,74 @@ function M.apply_monochrome()
   vim.api.nvim_set_hl(0, "@lsp.type.InlineMarker_ref_end", { fg = colors.faintest, italic = true })
 end
 
+-- Apply tree-sitter highlight groups scoped to lex filetype.
+-- These provide base highlighting before LSP semantic tokens arrive.
+-- Using @capture.lex suffix scopes these to lex buffers only.
+function M.apply_treesitter_native()
+  -- Tree-sitter captures from highlights.scm already use standard groups
+  -- (@markup.heading, @markup.raw, etc.) which colorschemes handle natively.
+  -- Only set lex-scoped groups where we need overrides.
+  vim.api.nvim_set_hl(0, "@variable.other.definition.lex", { link = "@markup.heading", default = true })
+  vim.api.nvim_set_hl(0, "@constant.builtin.lex", { link = "@markup.link", default = true })
+end
+
+function M.apply_treesitter_monochrome()
+  local is_dark = vim.o.background == "dark"
+  local colors = is_dark and {
+    normal = "#e0e0e0",
+    muted = "#888888",
+    faint = "#666666",
+    faintest = "#555555",
+    code_bg = "#2a2a2a",
+  } or {
+    normal = "#000000",
+    muted = "#808080",
+    faint = "#b3b3b3",
+    faintest = "#cacaca",
+    code_bg = "#f5f5f5",
+  }
+
+  -- Session titles (headings)
+  vim.api.nvim_set_hl(0, "@markup.heading.lex", { fg = colors.normal, bold = true })
+  vim.api.nvim_set_hl(0, "@punctuation.definition.heading.lex", { fg = colors.muted })
+
+  -- Definitions
+  vim.api.nvim_set_hl(0, "@variable.other.definition.lex", { fg = colors.normal, italic = true })
+
+  -- Verbatim blocks
+  vim.api.nvim_set_hl(0, "@markup.raw.block.lex", { fg = colors.faint })
+  vim.api.nvim_set_hl(0, "@markup.raw.lex", { fg = colors.normal, bg = colors.code_bg })
+  vim.api.nvim_set_hl(0, "@markup.raw.inline.lex", { fg = colors.normal })
+
+  -- Lists
+  vim.api.nvim_set_hl(0, "@markup.list.lex", { fg = colors.muted, italic = true })
+
+  -- Annotations
+  vim.api.nvim_set_hl(0, "@punctuation.special.lex", { fg = colors.faint })
+  vim.api.nvim_set_hl(0, "@comment.lex", { fg = colors.faint })
+
+  -- Inline formatting
+  vim.api.nvim_set_hl(0, "@markup.bold.lex", { fg = colors.normal, bold = true })
+  vim.api.nvim_set_hl(0, "@markup.italic.lex", { fg = colors.normal, italic = true })
+  vim.api.nvim_set_hl(0, "@markup.math.lex", { fg = colors.normal, italic = true })
+  vim.api.nvim_set_hl(0, "@string.escape.lex", { fg = colors.faint })
+
+  -- References
+  vim.api.nvim_set_hl(0, "@markup.link.lex", { fg = colors.muted, underline = true })
+  vim.api.nvim_set_hl(0, "@markup.link.url.lex", { fg = colors.muted, underline = true })
+  vim.api.nvim_set_hl(0, "@constant.builtin.lex", { fg = colors.muted })
+end
+
+--- Apply tree-sitter theme (called after tree-sitter setup succeeds)
+--- @param theme_name string "monochrome" or "native"
+function M.apply_treesitter(theme_name)
+  if theme_name == "native" then
+    M.apply_treesitter_native()
+  else
+    M.apply_treesitter_monochrome()
+  end
+end
+
 -- Apply the specified theme
 -- @param theme_name string: "monochrome" (default) or "native"
 function M.apply(theme_name)

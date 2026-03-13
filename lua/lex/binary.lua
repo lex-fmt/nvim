@@ -17,7 +17,7 @@ local MACHINE = (UNAME.machine or ''):lower()
 local IS_WINDOWS = OS_NAME:find('windows') ~= nil
 
 -- GitHub repository for lex-lsp binary releases
-local RELEASE_REPO = 'lex-fmt/editors'
+local RELEASE_REPO = 'lex-fmt/lex'
 
 local PLATFORM_ASSETS = {
   linux = {
