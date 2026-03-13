@@ -78,7 +78,8 @@ f:close()
 vim.cmd("edit " .. temp_lex)
 
 -- Wait for LSP to attach
-local lsp_binary = project_root .. "/target/debug/lex-lsp"
+local exe = vim.fn.exepath("lex-lsp")
+local lsp_binary = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (plugin_dir .. "/target/debug/lex-lsp")
 if vim.fn.executable(lsp_binary) ~= 1 then
   print("TEST_FAILED: lex-lsp binary not found at " .. lsp_binary)
   vim.cmd("cquit 1")

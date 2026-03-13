@@ -57,25 +57,8 @@ vim.filetype.add({
   },
 })
 
--- Create a test .lex file with content for document symbols
-local test_file = vim.fn.tempname() .. ".lex"
-local test_content = {
-  "# Document Title",
-  "Section One:",
-  "",
-  "  Content of section one.",
-  "",
-  "Section Two:",
-  "",
-  "  Content of section two.",
-  "",
-  "  Subsection:",
-  "",
-  "    Nested content.",
-}
-vim.fn.writefile(test_content, test_file)
-
--- Open the file
+-- Open spec fixture (has sessions and nested content for symbol testing)
+local test_file = plugin_dir .. "/comms/specs/benchmark/050-lsp-fixture.lex"
 vim.cmd("edit " .. test_file)
 
 -- Wait for LSP to attach (with timeout)
@@ -90,7 +73,7 @@ end
 
 if not lsp_attached then
   print("TEST_FAILED: LSP did not attach within timeout")
-  vim.fn.delete(test_file)
+
   vim.cmd("cquit 1")
 end
 
@@ -103,7 +86,7 @@ local result = vim.lsp.buf_request_sync(0, 'textDocument/documentSymbol', params
 
 if not result or vim.tbl_isempty(result) then
   print("TEST_FAILED: No document symbols result returned from LSP")
-  vim.fn.delete(test_file)
+
   vim.cmd("cquit 1")
 end
 

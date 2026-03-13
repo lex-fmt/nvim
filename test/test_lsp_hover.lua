@@ -58,23 +58,8 @@ vim.filetype.add({
   },
 })
 
--- Create a test .lex file with content that triggers hover
-local test_file = vim.fn.tempname() .. ".lex"
-local test_content = {
-  "# Test document",
-  "Introduction",
-  "",
-  "  :: callout ::",
-  "    This is an annotation.",
-  "",
-  "  Some text with a [^ref] footnote.",
-  "",
-  ":: ref ::",
-  "  Footnote content here.",
-}
-vim.fn.writefile(test_content, test_file)
-
--- Open the file
+-- Open spec fixture (has annotations, definitions, references for hover)
+local test_file = plugin_dir .. "/comms/specs/benchmark/050-lsp-fixture.lex"
 vim.cmd("edit " .. test_file)
 
 -- Wait for LSP to attach (with timeout)
@@ -89,15 +74,15 @@ end
 
 if not lsp_attached then
   print("TEST_FAILED: LSP did not attach within timeout")
-  vim.fn.delete(test_file)
+  
   vim.cmd("cquit 1")
 end
 
 -- Wait a bit more for LSP to be fully ready
 vim.wait(500)
 
--- Move cursor to line 4 (annotation line: "  :: callout ::")
-vim.api.nvim_win_set_cursor(0, {4, 5})
+-- Move cursor to annotation line: "    :: callout ::" (line 10 in the fixture)
+vim.api.nvim_win_set_cursor(0, {10, 7})
 
 -- Request hover information
 local params = vim.lsp.util.make_position_params()
@@ -105,7 +90,7 @@ local result = vim.lsp.buf_request_sync(0, 'textDocument/hover', params, 2000)
 
 if not result or vim.tbl_isempty(result) then
   print("TEST_FAILED: No hover result returned from LSP")
-  vim.fn.delete(test_file)
+  
   vim.cmd("cquit 1")
 end
 
@@ -129,7 +114,7 @@ for client_id, response in pairs(result) do
 end
 
 -- Clean up
-vim.fn.delete(test_file)
+
 
 if got_hover then
   print("TEST_PASSED: LSP hover functionality working")
