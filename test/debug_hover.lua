@@ -83,7 +83,7 @@ for _, pos in ipairs(test_positions) do
   print("\n=== Testing hover at line " .. pos.line .. ", col " .. pos.col .. " (" .. pos.desc .. ") ===")
   vim.api.nvim_win_set_cursor(0, {pos.line, pos.col})
 
-  local params = vim.lsp.util.make_position_params()
+  local params = vim.lsp.util.make_position_params(0, "utf-16")
   local result = vim.lsp.buf_request_sync(0, 'textDocument/hover', params, 2000)
 
   if result and not vim.tbl_isempty(result) then

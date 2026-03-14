@@ -69,7 +69,7 @@ end
 vim.wait(300)
 
 vim.fn.search("MyDef\\]", "w")
-local params = vim.lsp.util.make_position_params()
+local params = vim.lsp.util.make_position_params(0, "utf-16")
 local request = {
   textDocument = params.textDocument,
   position = params.position,
