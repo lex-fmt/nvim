@@ -81,11 +81,11 @@ end
 -- Wait a bit more for LSP to be fully ready
 vim.wait(500)
 
--- Move cursor to annotation line: "    :: callout ::" (line 10 in the fixture)
-vim.api.nvim_win_set_cursor(0, {10, 7})
+-- Move cursor to document annotation: ":: doc.note severity=info ::" (line 1)
+vim.api.nvim_win_set_cursor(0, {1, 5})
 
 -- Request hover information
-local params = vim.lsp.util.make_position_params()
+local params = vim.lsp.util.make_position_params(0, "utf-16")
 local result = vim.lsp.buf_request_sync(0, 'textDocument/hover', params, 2000)
 
 if not result or vim.tbl_isempty(result) then

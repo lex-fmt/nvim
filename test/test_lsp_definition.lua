@@ -69,7 +69,7 @@ end
 vim.wait(300)
 
 vim.fn.search("MyDef\\]", "w")
-local params = vim.lsp.util.make_position_params()
+local params = vim.lsp.util.make_position_params(0, "utf-16")
 local result = vim.lsp.buf_request_sync(0, 'textDocument/definition', params, 2000)
 
 if not result or vim.tbl_isempty(result) then
