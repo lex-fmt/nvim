@@ -356,6 +356,162 @@ function M.convert_to_lex()
   end
 end
 
+-- Format the table at cursor via LSP
+function M.format_table()
+  local client = get_lex_client()
+  if not client then
+    vim.notify("Lex LSP not attached", vim.log.levels.WARN)
+    return
+  end
+
+  local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  local content = table.concat(lines, "\n")
+  local position = get_cursor_position()
+
+  local result = execute_lsp_command("lex.table.format", { content, position.line, position.character })
+
+  if not result then
+    vim.notify("No table found at cursor position", vim.log.levels.INFO)
+    return
+  end
+
+  -- result is { start, end, newText } with byte offsets
+  local start_byte = result.start
+  local end_byte = result["end"]
+  local new_text = result.newText
+
+  -- Convert byte offsets to line/col positions
+  local byte_count = 0
+  local start_line, start_col, end_line, end_col
+  for i, line in ipairs(lines) do
+    local line_len = #line + 1 -- +1 for newline
+    if not start_line and byte_count + line_len > start_byte then
+      start_line = i - 1
+      start_col = start_byte - byte_count
+    end
+    if not end_line and byte_count + line_len > end_byte then
+      end_line = i - 1
+      end_col = end_byte - byte_count
+    end
+    byte_count = byte_count + line_len
+    if start_line and end_line then break end
+  end
+  -- Handle end at exact end of content
+  if not end_line then
+    end_line = #lines - 1
+    end_col = #lines[#lines]
+  end
+
+  local new_lines = vim.split(new_text, "\n", { plain = true })
+  vim.api.nvim_buf_set_text(0, start_line, start_col, end_line, end_col, new_lines)
+  vim.notify("Table formatted", vim.log.levels.INFO)
+end
+
+-- Navigate between table cells with Tab/Shift-Tab
+function M.navigate_table_cell(direction)
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local line_nr = cursor[1] -- 1-indexed
+  local col = cursor[2] -- 0-indexed
+  local line_text = vim.api.nvim_get_current_line()
+
+  -- Check if we're in a pipe row
+  if not line_text:match("^%s*|") then
+    -- Fall through to default Tab behavior
+    if direction == "next" then
+      vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-t>", true, false, true), "n", false)
+    else
+      vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-d>", true, false, true), "n", false)
+    end
+    return
+  end
+
+  -- Find pipe positions in the current line
+  local pipes = {}
+  for i = 1, #line_text do
+    if line_text:sub(i, i) == "|" then
+      pipes[#pipes + 1] = i - 1 -- 0-indexed
+    end
+  end
+
+  if #pipes < 2 then return end
+
+  if direction == "next" then
+    -- Find the next pipe after cursor, then position in next cell
+    local next_pipe = nil
+    for _, p in ipairs(pipes) do
+      if p > col then
+        next_pipe = p
+        break
+      end
+    end
+
+    if next_pipe then
+      -- Find index of next_pipe in pipes
+      local idx = 0
+      for i, p in ipairs(pipes) do
+        if p == next_pipe then idx = i; break end
+      end
+      if idx < #pipes then
+        -- Move to content of next cell (after pipe + space)
+        local target_col = math.min(next_pipe + 2, #line_text)
+        vim.api.nvim_win_set_cursor(0, { line_nr, target_col })
+        return
+      end
+    end
+
+    -- Last cell — move to first cell of next row
+    local next_line_nr = line_nr + 1
+    local line_count = vim.api.nvim_buf_line_count(0)
+    if next_line_nr <= line_count then
+      local next_text = vim.api.nvim_buf_get_lines(0, next_line_nr - 1, next_line_nr, false)[1]
+      if next_text and next_text:match("^%s*|") then
+        local first_pipe = next_text:find("|")
+        if first_pipe then
+          local target_col = math.min(first_pipe + 1, #next_text) -- 0-indexed: first_pipe-1 + 2
+          vim.api.nvim_win_set_cursor(0, { next_line_nr, target_col })
+          return
+        end
+      end
+    end
+  else
+    -- Find pipes before cursor
+    local prev_pipes = {}
+    for _, p in ipairs(pipes) do
+      if p < col then
+        prev_pipes[#prev_pipes + 1] = p
+      end
+    end
+
+    if #prev_pipes >= 2 then
+      -- Move to content of previous cell
+      local target_pipe = prev_pipes[#prev_pipes - 1]
+      local target_col = math.min(target_pipe + 2, #line_text)
+      vim.api.nvim_win_set_cursor(0, { line_nr, target_col })
+      return
+    end
+
+    -- First cell — move to last cell of previous row
+    local prev_line_nr = line_nr - 1
+    if prev_line_nr >= 1 then
+      local prev_text = vim.api.nvim_buf_get_lines(0, prev_line_nr - 1, prev_line_nr, false)[1]
+      if prev_text and prev_text:match("^%s*|") then
+        local prev_pipes_list = {}
+        for i = 1, #prev_text do
+          if prev_text:sub(i, i) == "|" then
+            prev_pipes_list[#prev_pipes_list + 1] = i - 1
+          end
+        end
+        if #prev_pipes_list >= 2 then
+          local target_pipe = prev_pipes_list[#prev_pipes_list - 1]
+          local target_col = math.min(target_pipe + 2, #prev_text)
+          vim.api.nvim_win_set_cursor(0, { prev_line_nr, target_col })
+          return
+        end
+      end
+    end
+  end
+end
+
 -- Setup all user commands
 function M.setup()
   -- Navigation commands
@@ -399,6 +555,11 @@ function M.setup()
   vim.api.nvim_create_user_command("LexConvertToLex", M.convert_to_lex, {
     desc = "Convert current buffer (Markdown) to Lex",
   })
+
+  -- Table commands
+  vim.api.nvim_create_user_command("LexFormatTable", M.format_table, {
+    desc = "Format table at cursor",
+  })
 end
 
 -- Setup default keymaps for .lex files
@@ -408,6 +569,13 @@ function M.setup_keymaps(bufnr)
   -- Annotation navigation (]a and [a are conventional next/prev mappings)
   vim.keymap.set("n", "]a", M.next_annotation, vim.tbl_extend("force", opts, { desc = "Next annotation" }))
   vim.keymap.set("n", "[a", M.previous_annotation, vim.tbl_extend("force", opts, { desc = "Previous annotation" }))
+
+  -- Table cell navigation (Tab/Shift-Tab in insert mode)
+  vim.keymap.set("i", "<Tab>", function() M.navigate_table_cell("next") end, vim.tbl_extend("force", opts, { desc = "Next table cell" }))
+  vim.keymap.set("i", "<S-Tab>", function() M.navigate_table_cell("previous") end, vim.tbl_extend("force", opts, { desc = "Previous table cell" }))
+
+  -- Format table at cursor
+  vim.keymap.set("n", "<leader>tf", M.format_table, vim.tbl_extend("force", opts, { desc = "Format table" }))
 end
 
 return M
