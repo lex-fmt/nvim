@@ -124,6 +124,7 @@ function M.apply_treesitter_native()
   -- Only set lex-scoped groups where we need overrides.
   vim.api.nvim_set_hl(0, "@variable.other.definition.lex", { link = "@markup.heading", default = true })
   vim.api.nvim_set_hl(0, "@constant.builtin.lex", { link = "@markup.link", default = true })
+  vim.api.nvim_set_hl(0, "@keyword.lex", { link = "@keyword", default = true })
 end
 
 function M.apply_treesitter_monochrome()
@@ -171,6 +172,7 @@ function M.apply_treesitter_monochrome()
   vim.api.nvim_set_hl(0, "@markup.link.lex", { fg = colors.muted, underline = true })
   vim.api.nvim_set_hl(0, "@markup.link.url.lex", { fg = colors.muted, underline = true })
   vim.api.nvim_set_hl(0, "@constant.builtin.lex", { fg = colors.muted })
+  vim.api.nvim_set_hl(0, "@keyword.lex", { fg = colors.faint })
 end
 
 --- Apply tree-sitter theme (called after tree-sitter setup succeeds)

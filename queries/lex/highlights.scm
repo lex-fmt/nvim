@@ -44,6 +44,8 @@
   (list) @markup.raw)
 (verbatim_block
   (verbatim_content) @markup.raw)
+(verbatim_block
+  (session) @markup.raw)
 
 ; Verbatim group item subjects and content
 (verbatim_group_item
@@ -56,6 +58,8 @@
   (list) @markup.raw)
 (verbatim_group_item
   (verbatim_content) @markup.raw)
+(verbatim_group_item
+  (session) @markup.raw)
 
 ; === Lists ===
 ; List marker (- , 1. , a) , etc.) — captures just the marker portion
@@ -85,6 +89,22 @@
   (annotation_marker) @markup.raw.block)
 (verbatim_block
   (annotation_header) @markup.raw.block)
+
+; === Table blocks (override verbatim captures) ===
+; Table blocks are verbatim_blocks whose annotation_header starts with "table".
+; Subject is a caption (heading), body is inline-parsed (not raw).
+; These MUST appear AFTER generic verbatim captures to take priority.
+
+; Table subject — highlighted as a heading/caption, not raw block
+((verbatim_block
+  subject: (subject_content) @markup.heading
+  (annotation_header) @_lang)
+ (#match? @_lang "^\\s*table"))
+
+; Table closing annotation — highlighted as keyword, not raw block
+((verbatim_block
+  (annotation_header) @keyword)
+ (#match? @keyword "^\\s*table"))
 
 ; === Inline formatting ===
 (strong) @markup.bold
