@@ -194,7 +194,22 @@ end
 
 print("TEST_PASSED: Table closing annotation highlighted as keyword")
 
--- Test 5: Verify with a real fixture that has tables
+-- Test 5: Verify pipe delimiters are captured as punctuation.delimiter
+local has_pipe_delimiter = false
+for _, text in ipairs(captures_by_name["punctuation.delimiter"] or {}) do
+  if text == "|" then
+    has_pipe_delimiter = true
+  end
+end
+
+if not has_pipe_delimiter then
+  print("TEST_FAILED: Pipe delimiters not captured as punctuation.delimiter")
+  vim.cmd("cquit 1")
+end
+
+print("TEST_PASSED: Pipe delimiters highlighted as punctuation.delimiter")
+
+-- Test 6: Verify with a real fixture that has tables
 local fixture = plugin_dir .. "/comms/specs/benchmark/080-gentle-introduction.lex"
 if vim.fn.filereadable(fixture) == 1 then
   vim.cmd("edit " .. fixture)
