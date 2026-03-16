@@ -30,15 +30,19 @@ jobs:
         id: deps
         run: |
           LEX_LSP_VERSION=$(jq -r '.["lex-lsp"]' shared/lex-deps.json)
+          LEX_LSP_REPO=$(jq -r '.["lex-lsp-repo"]' shared/lex-deps.json)
           TREE_SITTER_VERSION=$(jq -r '.["tree-sitter"]' shared/lex-deps.json)
+          TREE_SITTER_REPO=$(jq -r '.["tree-sitter-repo"]' shared/lex-deps.json)
           echo "lsp_version=$LEX_LSP_VERSION" >> $GITHUB_OUTPUT
+          echo "lsp_repo=$LEX_LSP_REPO" >> $GITHUB_OUTPUT
           echo "ts_version=$TREE_SITTER_VERSION" >> $GITHUB_OUTPUT
-          echo "Using lex-lsp $LEX_LSP_VERSION, tree-sitter $TREE_SITTER_VERSION"
+          echo "ts_repo=$TREE_SITTER_REPO" >> $GITHUB_OUTPUT
+          echo "Using lex-lsp $LEX_LSP_VERSION from $LEX_LSP_REPO, tree-sitter $TREE_SITTER_VERSION from $TREE_SITTER_REPO"
 
       - name: Download lex-lsp binary
         uses: robinraju/release-downloader@v1.8
         with:
-          repository: lex-fmt/lex
+          repository: ${{ steps.deps.outputs.lsp_repo }}
           tag: ${{ steps.deps.outputs.lsp_version }}
           fileName: "lex-lsp-x86_64-unknown-linux-gnu.tar.gz"
           tarBall: false
@@ -53,7 +57,7 @@ jobs:
       - name: Download tree-sitter source
         uses: robinraju/release-downloader@v1.8
         with:
-          repository: lex-fmt/lex
+          repository: ${{ steps.deps.outputs.ts_repo }}
           tag: ${{ steps.deps.outputs.ts_version }}
           fileName: "tree-sitter.tar.gz"
           tarBall: false

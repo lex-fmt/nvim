@@ -1,6 +1,6 @@
 -- Tree-sitter integration for Lex
 -- Compiles the parser from C sources and registers it with Neovim.
--- Sources come from the tree-sitter.tar.gz release artifact (lex-fmt/lex)
+-- Sources come from the tree-sitter.tar.gz release artifact (lex-fmt/tree-sitter-lex)
 -- or a local dev path.
 
 local uv = vim.loop
