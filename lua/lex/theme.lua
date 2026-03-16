@@ -22,7 +22,8 @@ function M.apply_native()
   vim.api.nvim_set_hl(0, "@lsp.type.ListItemText", { link = "@markup", default = true })
 
   -- Structural elements - use punctuation/delimiter groups
-  vim.api.nvim_set_hl(0, "@lsp.type.DocumentTitle", { underline = true, default = true })
+  vim.api.nvim_set_hl(0, "@lsp.type.DocumentTitle", { bold = true, underline = true, default = true })
+  vim.api.nvim_set_hl(0, "@lsp.type.DocumentSubtitle", { italic = true, default = true })
   vim.api.nvim_set_hl(0, "@lsp.type.SessionMarker", { link = "@punctuation.special", default = true })
   vim.api.nvim_set_hl(0, "@lsp.type.ListMarker", { link = "@markup.list", default = true })
 
@@ -86,8 +87,11 @@ function M.apply_monochrome()
   vim.api.nvim_set_hl(0, "@lsp.type.VerbatimContent", { fg = colors.normal, bg = colors.code_bg })
   vim.api.nvim_set_hl(0, "@lsp.type.ListItemText", { fg = colors.normal })
 
+  -- NORMAL intensity: document title (bold + underline) and subtitle (italic)
+  vim.api.nvim_set_hl(0, "@lsp.type.DocumentTitle", { fg = colors.normal, bold = true, underline = true })
+  vim.api.nvim_set_hl(0, "@lsp.type.DocumentSubtitle", { fg = colors.normal, italic = true })
+
   -- MUTED intensity: structural elements (markers, references)
-  vim.api.nvim_set_hl(0, "@lsp.type.DocumentTitle", { fg = colors.normal, underline = true })
   vim.api.nvim_set_hl(0, "@lsp.type.SessionMarker", { fg = colors.muted, italic = true })
   vim.api.nvim_set_hl(0, "@lsp.type.ListMarker", { fg = colors.muted, italic = true })
   vim.api.nvim_set_hl(0, "@lsp.type.Reference", { fg = colors.muted, underline = true })
@@ -143,8 +147,9 @@ function M.apply_treesitter_monochrome()
     code_bg = "#f5f5f5",
   }
 
-  -- Session titles (headings)
+  -- Session titles (headings) and document subtitle
   vim.api.nvim_set_hl(0, "@markup.heading.lex", { fg = colors.normal, bold = true })
+  vim.api.nvim_set_hl(0, "@markup.heading.subtitle.lex", { fg = colors.normal, italic = true })
   vim.api.nvim_set_hl(0, "@punctuation.definition.heading.lex", { fg = colors.muted })
 
   -- Definitions
