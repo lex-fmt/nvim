@@ -17,7 +17,7 @@ local treesitter = require("lex.treesitter")
 local M = {}
 
 -- Plugin version (lex-lsp version read from shared/lex-deps.json)
-M.version = "0.3.12"
+M.version = "0.6.0"
 
 -- Get the plugin root directory
 local function get_plugin_root()
