@@ -43,3 +43,4 @@ luac.out
 
 # Downloaded binaries and compiled parsers
 bin/
+.padz
