@@ -8,6 +8,9 @@
 ;   vic — select inside class/section
 ;   etc.
 
+; === Document Title ===
+(document_title) @block.outer
+
 ; === Blocks (@block.outer / @block.inner) ===
 ; Sessions are the primary structural unit
 (session) @block.outer
@@ -36,6 +39,7 @@
 (verbatim_block) @statement.outer
 (annotation_block) @statement.outer
 (annotation_single) @statement.outer
+(table_row) @statement.outer
 
 ; === Comments (@comment.outer) ===
 ; Annotations are metadata — map to "comment" for quick navigation
@@ -47,3 +51,5 @@
 (list_item) @parameter.outer
 ; Verbatim group items for navigating between group pairs
 (verbatim_group_item) @parameter.outer
+; Table cells as "parameters" for cell-level navigation (i|, a|)
+(table_cell) @parameter.outer

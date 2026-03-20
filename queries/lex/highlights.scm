@@ -13,6 +13,20 @@
 ; when multiple patterns match the same node. Specific overrides (e.g.
 ; verbatim closing markers) must appear AFTER their generic counterparts.
 
+; === Document Title ===
+; Document title is the primary heading (LSP: DocumentTitle)
+(document_title
+  title: (line_content) @markup.heading)
+
+; Document subtitle (LSP: DocumentSubtitle)
+(document_subtitle
+  subtitle: (line_content) @markup.heading.subtitle)
+
+; Document title sequence marker (e.g., numbered title)
+(document_title
+  title: (line_content
+    (list_marker) @punctuation.definition.heading))
+
 ; === Sessions ===
 ; Session titles are headings (LSP: SessionTitleText)
 (session
@@ -70,6 +84,7 @@
 ; === Annotations (generic) ===
 ; Annotation delimiters (LSP: part of AnnotationLabel)
 (annotation_marker) @punctuation.special
+(annotation_close) @punctuation.special
 
 ; Annotation header — the label between :: markers (LSP: AnnotationLabel)
 (annotation_header) @comment
@@ -88,33 +103,36 @@
 (verbatim_block
   (annotation_marker) @markup.raw.block)
 (verbatim_block
+  (annotation_close) @markup.raw.block)
+(verbatim_block
   (annotation_header) @markup.raw.block)
 
-; === Table blocks (override verbatim captures) ===
-; Table blocks are verbatim_blocks whose annotation_header starts with "table".
-; Subject is a caption (heading), body is inline-parsed (not raw).
-; These MUST appear AFTER generic verbatim captures to take priority.
-
-; Table subject — highlighted as a heading/caption, not raw block
-((verbatim_block
-  subject: (subject_content) @markup.heading
-  (annotation_header) @_lang)
- (#match? @_lang "^\\s*table"))
-
-; Table closing annotation — highlighted as keyword, not raw block
-((verbatim_block
-  (annotation_header) @keyword)
- (#match? @keyword "^\\s*table"))
-
 ; === Table structure ===
-; Pipe delimiters in table rows — dim punctuation
+; Tables parse as definitions with pipe-row content.
+
+; Table caption — italic to distinguish from regular definitions.
+; Overrides the generic @variable.other.definition capture above.
+(definition
+  subject: (subject_content) @markup.italic
+  (table_row))
+
+; Header row — first table_row in a definition (bold text).
+; The anchor (.) ensures only the first row after the subject matches.
+(definition
+  subject: (_) .
+  (table_row
+    (table_cell
+      (text_content) @markup.bold)))
+
+; Pipe delimiters — dimmed punctuation
 (table_row
-  (pipe_delimiter) @punctuation.delimiter)
+  (pipe_delimiter) @comment)
 
 ; Table separator rows — fully dimmed (cosmetic, parser ignores them)
 (table_separator_row) @comment
 
-; Table cell merge markers (>> and ^^)
+; Table cell inline content inherits from the inline rules below.
+; Merge markers (>> and ^^) are highlighted via content predicates:
 ((table_cell
   (text_content) @keyword.operator)
  (#match? @keyword.operator "^\\s*>>\\s*$"))
