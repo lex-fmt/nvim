@@ -1,10 +1,11 @@
 -- Test: Table blocks parse correctly and are NOT injected as a language
 --
 -- Verifies that:
--- 1. Table blocks (:: table ::) parse as verbatim_block without errors
+-- 1. Table blocks parse as definition (with pipe rows) without errors
 -- 2. Table blocks are NOT treated as language injections
--- 3. Table caption (subject) gets heading highlight, not raw block
--- 4. Table closing annotation gets keyword highlight, not comment
+-- 3. Table caption gets markup.italic highlight
+-- 4. Header row cells get markup.bold highlight
+-- 5. Pipe delimiters get comment highlight (dimmed)
 
 local script_path = debug.getinfo(1).source:sub(2)
 local test_dir = vim.fn.fnamemodify(script_path, ":p:h")
@@ -43,7 +44,7 @@ end
 
 vim.treesitter.language.add("lex", { path = so_path })
 
--- Create a buffer with table content
+-- Create a buffer with table content (new syntax: no closing :: table ::)
 vim.filetype.add({ extension = { lex = "lex" } })
 local buf = vim.api.nvim_create_buf(true, false)
 vim.api.nvim_set_current_buf(buf)
@@ -54,7 +55,8 @@ local table_content = {
   "    | Name  | Score |",
   "    | Alpha | 100   |",
   "    | Beta  | 200   |",
-  ":: table header=1 ::",
+  "",
+  "    :: table header=1 ::",
 }
 vim.api.nvim_buf_set_lines(buf, 0, -1, false, table_content)
 vim.wait(100)
@@ -90,24 +92,24 @@ end
 
 print("TEST_PASSED: Table content parsed without errors")
 
--- Test 2: Verify table parses as verbatim_block
-local found_verbatim = false
-local function find_verbatim(node)
-  if node:type() == "verbatim_block" then
-    found_verbatim = true
+-- Test 2: Verify table parses as definition (not verbatim_block)
+local found_definition = false
+local function find_definition(node)
+  if node:type() == "definition" then
+    found_definition = true
   end
   for child in node:iter_children() do
-    find_verbatim(child)
+    find_definition(child)
   end
 end
-find_verbatim(root)
+find_definition(root)
 
-if not found_verbatim then
-  print("TEST_FAILED: Table did not parse as verbatim_block")
+if not found_definition then
+  print("TEST_FAILED: Table did not parse as definition")
   vim.cmd("cquit 1")
 end
 
-print("TEST_PASSED: Table parsed as verbatim_block")
+print("TEST_PASSED: Table parsed as definition")
 
 -- Test 3: Verify table blocks are NOT in injection results
 local query_ok, injection_query = pcall(vim.treesitter.query.get, "lex", "injections")
@@ -154,62 +156,52 @@ for id, node in highlight_query:iter_captures(root, buf) do
   table.insert(captures_by_name[name], vim.treesitter.get_node_text(node, buf))
 end
 
--- Table subject should be captured as markup.heading (from table override)
-if not captures_by_name["markup.heading"] then
-  print("TEST_FAILED: No markup.heading capture found (expected table caption)")
-  vim.cmd("cquit 1")
-end
-
+-- Table subject should be captured as markup.italic
 local has_caption = false
-for _, text in ipairs(captures_by_name["markup.heading"] or {}) do
+for _, text in ipairs(captures_by_name["markup.italic"] or {}) do
   if text:match("Results") then
     has_caption = true
   end
 end
 
 if not has_caption then
-  print("TEST_FAILED: Table caption not captured as markup.heading")
+  print("TEST_FAILED: Table caption not captured as markup.italic")
   vim.cmd("cquit 1")
 end
 
-print("TEST_PASSED: Table caption highlighted as markup.heading")
+print("TEST_PASSED: Table caption highlighted as markup.italic")
 
--- Table closing annotation should be captured as keyword (from table override)
-if not captures_by_name["keyword"] then
-  print("TEST_FAILED: No keyword capture found (expected table closing annotation)")
-  vim.cmd("cquit 1")
-end
-
-local has_keyword = false
-for _, text in ipairs(captures_by_name["keyword"] or {}) do
-  if text:match("table") then
-    has_keyword = true
+-- Test 5: Header row cells should be captured as markup.bold
+local has_header_bold = false
+for _, text in ipairs(captures_by_name["markup.bold"] or {}) do
+  if text:match("Name") or text:match("Score") then
+    has_header_bold = true
   end
 end
 
-if not has_keyword then
-  print("TEST_FAILED: Table closing annotation not captured as keyword")
+if not has_header_bold then
+  print("TEST_FAILED: Header row cells not captured as markup.bold")
   vim.cmd("cquit 1")
 end
 
-print("TEST_PASSED: Table closing annotation highlighted as keyword")
+print("TEST_PASSED: Header row cells highlighted as markup.bold")
 
--- Test 5: Verify pipe delimiters are captured as punctuation.delimiter
-local has_pipe_delimiter = false
-for _, text in ipairs(captures_by_name["punctuation.delimiter"] or {}) do
+-- Test 6: Verify pipe delimiters are captured as comment (dimmed)
+local has_pipe = false
+for _, text in ipairs(captures_by_name["comment"] or {}) do
   if text == "|" then
-    has_pipe_delimiter = true
+    has_pipe = true
   end
 end
 
-if not has_pipe_delimiter then
-  print("TEST_FAILED: Pipe delimiters not captured as punctuation.delimiter")
+if not has_pipe then
+  print("TEST_FAILED: Pipe delimiters not captured as comment")
   vim.cmd("cquit 1")
 end
 
-print("TEST_PASSED: Pipe delimiters highlighted as punctuation.delimiter")
+print("TEST_PASSED: Pipe delimiters highlighted as comment (dimmed)")
 
--- Test 6: Verify with a real fixture that has tables
+-- Test 7: Verify with a real fixture that has tables
 local fixture = plugin_dir .. "/comms/specs/benchmark/080-gentle-introduction.lex"
 if vim.fn.filereadable(fixture) == 1 then
   vim.cmd("edit " .. fixture)
@@ -232,27 +224,6 @@ if vim.fn.filereadable(fixture) == 1 then
 
   if fix_errors then
     print("TEST_FAILED: Fixture 080-gentle-introduction.lex has parse errors")
-    vim.cmd("cquit 1")
-  end
-
-  -- Check that table injection is excluded in the fixture too
-  local fix_inj_langs = {}
-  for _, match in injection_query:iter_matches(fix_root, 0) do
-    for id, nodes in pairs(match) do
-      local name = injection_query.captures[id]
-      if name == "injection.language" then
-        local node = type(nodes) == "table" and nodes[1] or nodes
-        local text = vim.treesitter.get_node_text(node, 0)
-        local lang = text:match("^%s*(%S+)")
-        if lang then
-          fix_inj_langs[lang] = true
-        end
-      end
-    end
-  end
-
-  if fix_inj_langs["table"] then
-    print("TEST_FAILED: Fixture table block incorrectly detected as injection")
     vim.cmd("cquit 1")
   end
 
