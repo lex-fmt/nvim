@@ -172,11 +172,12 @@ function M.setup(opts)
     })
   end
 
-  -- Setup tree-sitter (parser + highlighting + injections)
+  -- Setup tree-sitter (parser + highlighting + injections + folds)
   local ts_opts = opts.treesitter
+  local ts_active = false
   if ts_opts ~= false then
-    local ts_ok = treesitter.setup(type(ts_opts) == "table" and ts_opts or {})
-    if ts_ok then
+    ts_active = treesitter.setup(type(ts_opts) == "table" and ts_opts or {})
+    if ts_active then
       theme.apply_treesitter(theme_name)
     end
   end
@@ -202,6 +203,13 @@ function M.setup(opts)
       vim.wo.wrap = true
       vim.wo.linebreak = true
       vim.bo.textwidth = 0
+
+      -- Tree-sitter folding (sessions, verbatim blocks, definitions, etc.)
+      if ts_active then
+        vim.wo.foldmethod = "expr"
+        vim.wo.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+        vim.wo.foldlevel = 99 -- start with all folds open
+      end
     end,
   })
 

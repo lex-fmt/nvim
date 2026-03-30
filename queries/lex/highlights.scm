@@ -159,3 +159,26 @@
 (session_reference) @markup.link
 (tocome_reference) @constant.builtin
 (number_reference) @markup.link
+
+; === Spell checking ===
+; Enable spell checking on prose content (leaf text nodes)
+(line_content) @spell
+(text_content) @spell
+(subject_content) @spell
+
+; Disable in verbatim blocks (content is code/preformatted)
+(verbatim_block (paragraph (text_line (line_content) @nospell)))
+(verbatim_block (verbatim_content) @nospell)
+(verbatim_block subject: (subject_content) @nospell)
+(verbatim_group_item (paragraph (text_line (line_content) @nospell)))
+(verbatim_group_item (verbatim_content) @nospell)
+(verbatim_group_item subject: (subject_content) @nospell)
+
+; Disable on non-prose inline elements
+(code_span) @nospell
+(math_span) @nospell
+(escape_sequence) @nospell
+
+; Disable on metadata/annotations
+(annotation_header) @nospell
+(annotation_inline_text) @nospell
