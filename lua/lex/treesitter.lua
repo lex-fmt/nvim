@@ -194,7 +194,15 @@ function M.setup(opts)
   end
 
   -- Register parser with Neovim
-  vim.treesitter.language.add("lex", { path = so_path })
+  local lang_ok, lang_err = pcall(vim.treesitter.language.add, "lex", { path = so_path })
+  if not lang_ok then
+    vim.notify(
+      "Lex tree-sitter: failed to register parser: " .. tostring(lang_err),
+      vim.log.levels.WARN,
+      { title = "Lex" }
+    )
+    return false
+  end
 
   -- Enable tree-sitter highlighting for lex buffers
   local augroup = vim.api.nvim_create_augroup("LexTreeSitter", { clear = true })
@@ -202,14 +210,20 @@ function M.setup(opts)
     group = augroup,
     pattern = "lex",
     callback = function(ev)
-      vim.treesitter.start(ev.buf, "lex")
+      local ok, err = pcall(vim.treesitter.start, ev.buf, "lex")
+      if not ok then
+        vim.notify("Lex tree-sitter: " .. tostring(err), vim.log.levels.WARN, { title = "Lex" })
+      end
     end,
   })
 
   -- Enable for any already-open lex buffers
   for _, buf in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].filetype == "lex" then
-      vim.treesitter.start(buf, "lex")
+      local ok, err = pcall(vim.treesitter.start, buf, "lex")
+      if not ok then
+        vim.notify("Lex tree-sitter: " .. tostring(err), vim.log.levels.WARN, { title = "Lex" })
+      end
     end
   end
 
