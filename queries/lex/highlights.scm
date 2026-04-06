@@ -153,7 +153,7 @@
 
 ; Specific reference type overrides (later = higher priority)
 (citation_reference) @markup.link
-(footnote_reference) @markup.link
+(annotation_reference) @markup.link
 (url_reference) @markup.link.url
 (file_reference) @markup.link.url
 (session_reference) @markup.link

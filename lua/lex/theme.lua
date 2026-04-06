@@ -31,6 +31,7 @@ function M.apply_native()
   vim.api.nvim_set_hl(0, "@lsp.type.Reference", { link = "@markup.link", default = true })
   vim.api.nvim_set_hl(0, "@lsp.type.ReferenceCitation", { link = "@markup.link", default = true })
   vim.api.nvim_set_hl(0, "@lsp.type.ReferenceFootnote", { link = "@markup.link", default = true })
+  vim.api.nvim_set_hl(0, "@lsp.type.ReferenceAnnotation", { link = "@markup.link", default = true })
 
   -- Meta-information - use comment group
   vim.api.nvim_set_hl(0, "@lsp.type.AnnotationLabel", { link = "@comment", default = true })
@@ -97,6 +98,7 @@ function M.apply_monochrome()
   vim.api.nvim_set_hl(0, "@lsp.type.Reference", { fg = colors.muted, underline = true })
   vim.api.nvim_set_hl(0, "@lsp.type.ReferenceCitation", { fg = colors.muted, underline = true })
   vim.api.nvim_set_hl(0, "@lsp.type.ReferenceFootnote", { fg = colors.muted, underline = true })
+  vim.api.nvim_set_hl(0, "@lsp.type.ReferenceAnnotation", { fg = colors.muted, underline = true })
 
   -- FAINT intensity: meta-information (annotations, verbatim metadata)
   vim.api.nvim_set_hl(0, "@lsp.type.AnnotationLabel", { fg = colors.faint })
