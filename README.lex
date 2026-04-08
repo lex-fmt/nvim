@@ -106,7 +106,8 @@ Neovim plugin for reading and writing Lex, the plain-text format for ideas, docu
         @lsp.type.ListMarker         - Bullet or number prefix (italic)
         @lsp.type.Reference          - Cross-references [like this]
         @lsp.type.ReferenceCitation  - Citations [@like this]
-        @lsp.type.ReferenceFootnote  - Footnotes [^like this]
+        @lsp.type.ReferenceFootnote   - Footnotes [1]
+        @lsp.type.ReferenceAnnotation - Annotation refs [::like this]
 
     Meta tokens (faint intensity):
 
