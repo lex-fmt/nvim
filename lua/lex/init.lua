@@ -16,7 +16,7 @@ local treesitter = require("lex.treesitter")
 
 local M = {}
 
--- Plugin version (lex-lsp version read from shared/lex-deps.json)
+-- Plugin version (lexd-lsp version read from shared/lex-deps.json)
 M.version = "0.6.0"
 
 -- Get the plugin root directory
@@ -25,7 +25,7 @@ local function get_plugin_root()
   return vim.fn.fnamemodify(source, ":h:h:h")
 end
 
--- Read lex-lsp version from shared/lex-deps.json
+-- Read lexd-lsp version from shared/lex-deps.json
 local function read_lex_deps()
   local plugin_root = get_plugin_root()
   local deps_file = plugin_root .. "/shared/lex-deps.json"
@@ -46,11 +46,11 @@ local function read_lex_deps()
   return deps
 end
 
--- Get pinned lex-lsp version from shared/lex-deps.json
+-- Get pinned lexd-lsp version from shared/lex-deps.json
 local function get_pinned_lsp_version()
   local deps = read_lex_deps()
-  if deps and deps["lex-lsp"] then
-    return deps["lex-lsp"]
+  if deps and deps["lexd-lsp"] then
+    return deps["lexd-lsp"]
   end
   -- Fallback if deps file not found
   return "v0.3.0"
@@ -58,12 +58,12 @@ end
 
 M.lex_lsp_version = get_pinned_lsp_version()
 
--- Resolve which lex-lsp binary to execute.
+-- Resolve which lexd-lsp binary to execute.
 -- Priority:
 -- 1. LEX_LSP_PATH env var (explicit override, e.g. for local dev builds)
 -- 2. opts.cmd (user override)
 -- 3. Auto-download pinned version
--- 4. Fallback: lex-lsp in PATH
+-- 4. Fallback: lexd-lsp in PATH
 local function resolve_lsp_cmd(opts)
   -- 1. Environment variable takes precedence (for CI and explicit override)
   local env_path = vim.env.LEX_LSP_PATH
@@ -97,7 +97,7 @@ local function resolve_lsp_cmd(opts)
   end
 
   -- 4. Fallback to PATH
-  return { "lex-lsp" }
+  return { "lexd-lsp" }
 end
 
 -- Setup function called by lazy.nvim or manual setup
@@ -118,7 +118,7 @@ function M.setup(opts)
   if ok then
     local configs = require("lspconfig.configs")
 
-    -- Register lex-lsp server config if not already registered
+    -- Register lexd-lsp server config if not already registered
     if not configs.lex_lsp then
       configs.lex_lsp = {
         default_config = {

@@ -26,7 +26,7 @@ Neovim plugin for reading and writing Lex, the plain-text format for ideas, docu
             end,
         }
     :: lua ::
-    The plugin auto-downloads the lex-lsp binary on first use.
+    The plugin auto-downloads the lexd-lsp binary on first use.
 
 2. Configuration
     There is not much configurations for lex:
@@ -131,13 +131,13 @@ Neovim plugin for reading and writing Lex, the plain-text format for ideas, docu
         @lsp.type.InlineMarker_ref_end         - Closing ]
 
 
-5. The Lex-lsp Binrary
+5. The Lexd-lsp Binary
 
-    By default the Lex plugin will download and install the lex-lsp binary post install or on updates, when needed. If you'd rather use another version you can specify a version by: 
+    By default the Lex plugin will download and install the lexd-lsp binary post install or on updates, when needed. If you'd rather use another version you can specify a version by:
 
       require("lex").setup({
             -- Or use a custom binary path
-            cmd = { "/path/to/lex-lsp" },
+            cmd = { "/path/to/lexd-lsp" },
 
         })
     :: lua ::

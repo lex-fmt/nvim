@@ -8,7 +8,7 @@ local project_root = vim.fn.fnamemodify(plugin_dir, ":h:h")
 -- Setup lex plugin
 local lex = require("lex")
 lex.setup({
-  cmd = { project_root .. "/target/debug/lex-lsp" },
+  cmd = { project_root .. "/target/debug/lexd-lsp" },
   debug_theme = true,
 })
 

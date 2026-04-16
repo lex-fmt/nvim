@@ -13,10 +13,10 @@ if not lspconfig_ok then
 end
 
 local configs = require("lspconfig.configs")
-local lex_lsp_path = project_root .. "/target/debug/lex-lsp"
+local lex_lsp_path = project_root .. "/target/debug/lexd-lsp"
 
 if vim.fn.filereadable(lex_lsp_path) ~= 1 then
-  print("ERROR: lex-lsp binary not found at " .. lex_lsp_path)
+  print("ERROR: lexd-lsp binary not found at " .. lex_lsp_path)
   vim.cmd("cquit 1")
 end
 

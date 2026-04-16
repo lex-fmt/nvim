@@ -81,9 +81,9 @@ vim.filetype.add({
 -- This minimal_init.lua bootstraps dependencies (lazy.nvim, lspconfig) and loads our plugin
 -- The actual plugin logic (LSP config, semantic tokens) is in lua/lex/init.lua
 local project_root = vim.fn.fnamemodify(plugin_dir, ":h:h")
--- Check for lex-lsp in order: LEX_LSP_PATH env var, system PATH, local build
-local exe = vim.fn.exepath("lex-lsp")
-local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (project_root .. "/target/debug/lex-lsp")
+-- Check for lexd-lsp in order: LEX_LSP_PATH env var, system PATH, local build
+local exe = vim.fn.exepath("lexd-lsp")
+local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (project_root .. "/target/debug/lexd-lsp")
 
 -- Debug: verify paths (set DEBUG_LEX_INIT=1 to enable)
 if vim.env.DEBUG_LEX_INIT then
@@ -97,10 +97,10 @@ end
 local ok, lex = pcall(require, "lex")
 if ok then
   lex.setup({
-    cmd = { lex_lsp_path },  -- Path to lex-lsp binary
+    cmd = { lex_lsp_path },  -- Path to lexd-lsp binary
     -- debug_theme = true,   -- Uncomment to use lex-light.json colors for visual testing
   })
 elseif vim.env.DEBUG_LEX_INIT then
   print("Failed to load lex plugin - semantic tokens won't work for .lex files")
-  print("This is expected if lex-lsp binary doesn't exist yet")
+  print("This is expected if lexd-lsp binary doesn't exist yet")
 end

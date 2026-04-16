@@ -1,6 +1,6 @@
 -- Binary manager used by the Neovim plugin. Responsible for downloading the
--- correct lex-lsp release asset into ${PLUGIN_ROOT}/bin/ and returning the path
--- so the LSP client can spawn it. Binaries are versioned (lex-lsp-vX.Y.Z) to
+-- correct lexd-lsp release asset into ${PLUGIN_ROOT}/bin/ and returning the path
+-- so the LSP client can spawn it. Binaries are versioned (lexd-lsp-vX.Y.Z) to
 -- keep upgrades atomic and the download uses GitHub release artifacts
 -- (tar.gz+zip). The helper falls back to the latest release if the requested
 -- version cannot be downloaded.
@@ -16,20 +16,20 @@ local OS_NAME = UNAME.sysname:lower()
 local MACHINE = (UNAME.machine or ''):lower()
 local IS_WINDOWS = OS_NAME:find('windows') ~= nil
 
--- GitHub repository for lex-lsp binary releases
+-- GitHub repository for lexd-lsp binary releases
 local RELEASE_REPO = 'lex-fmt/lex'
 
 local PLATFORM_ASSETS = {
   linux = {
-    amd64 = { filename = 'lex-lsp-x86_64-unknown-linux-gnu.tar.gz', kind = 'tar.gz' },
-    arm64 = { filename = 'lex-lsp-aarch64-unknown-linux-gnu.tar.gz', kind = 'tar.gz' },
+    amd64 = { filename = 'lexd-lsp-x86_64-unknown-linux-gnu.tar.gz', kind = 'tar.gz' },
+    arm64 = { filename = 'lexd-lsp-aarch64-unknown-linux-gnu.tar.gz', kind = 'tar.gz' },
   },
   darwin = {
-    amd64 = { filename = 'lex-lsp-x86_64-apple-darwin.tar.gz', kind = 'tar.gz' },
-    arm64 = { filename = 'lex-lsp-aarch64-apple-darwin.tar.gz', kind = 'tar.gz' },
+    amd64 = { filename = 'lexd-lsp-x86_64-apple-darwin.tar.gz', kind = 'tar.gz' },
+    arm64 = { filename = 'lexd-lsp-aarch64-apple-darwin.tar.gz', kind = 'tar.gz' },
   },
   windows = {
-    amd64 = { filename = 'lex-lsp-x86_64-pc-windows-msvc.zip', kind = 'zip' },
+    amd64 = { filename = 'lexd-lsp-x86_64-pc-windows-msvc.zip', kind = 'zip' },
     -- Note: arm64 Windows not currently built, falls back to amd64
   },
 }
@@ -148,7 +148,7 @@ local function download_release(tag, dest)
   end
   local asset = select_asset()
   if not asset then
-    return nil, 'unsupported platform for automatic lex-lsp download'
+    return nil, 'unsupported platform for automatic lexd-lsp download'
   end
 
   local base = 'https://github.com/' .. RELEASE_REPO .. '/releases/download/%s/%s'
@@ -175,11 +175,11 @@ local function download_release(tag, dest)
     return nil, extract_err
   end
 
-  local binary_name = IS_WINDOWS and 'lex-lsp.exe' or 'lex-lsp'
+  local binary_name = IS_WINDOWS and 'lexd-lsp.exe' or 'lexd-lsp'
   local extracted = find_extracted_binary(tmpdir, binary_name)
   if not extracted or vim.fn.filereadable(extracted) == 0 then
     vim.fn.delete(tmpdir, 'rf')
-    return nil, 'lex-lsp binary not found in archive'
+    return nil, 'lexd-lsp binary not found in archive'
   end
 
   ensure_dir(vim.fn.fnamemodify(dest, ':h'))
@@ -230,7 +230,7 @@ local function ensure_binary(version)
   ensure_dir(bin_dir)
 
   local suffix = IS_WINDOWS and '.exe' or ''
-  local filename = string.format('lex-lsp-%s%s', version, suffix)
+  local filename = string.format('lexd-lsp-%s%s', version, suffix)
   local binary_path = bin_dir .. '/' .. filename
 
   if vim.fn.filereadable(binary_path) == 1 then
@@ -245,7 +245,7 @@ local function ensure_binary(version)
       path, err = download_release(fallback_tag, binary_path)
       if path then
         vim.notify(
-          string.format('lex-lsp %s unavailable, downloaded %s instead', version, fallback_tag),
+          string.format('lexd-lsp %s unavailable, downloaded %s instead', version, fallback_tag),
           vim.log.levels.WARN,
           { title = 'Lex' }
         )
@@ -253,7 +253,7 @@ local function ensure_binary(version)
       end
     end
     vim.notify(
-      string.format('Failed to download lex-lsp %s: %s', version, err or 'unknown error'),
+      string.format('Failed to download lexd-lsp %s: %s', version, err or 'unknown error'),
       vim.log.levels.ERROR,
       { title = 'Lex' }
     )

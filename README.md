@@ -31,7 +31,7 @@ use {
 }
 ```
 
-The plugin auto-downloads the `lex-lsp` binary on first use.
+The plugin auto-downloads the `lexd-lsp` binary on first use.
 
 ## Configuration
 
@@ -40,8 +40,8 @@ require("lex").setup({
     -- "monochrome" (default) or "native"
     theme = "monochrome",
 
-    -- Override the lex-lsp binary path
-    cmd = { "/path/to/lex-lsp" },
+    -- Override the lexd-lsp binary path
+    cmd = { "/path/to/lexd-lsp" },
 
     -- Additional lspconfig options
     lsp_config = {

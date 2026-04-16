@@ -5,7 +5,7 @@
 
 local M = {}
 
--- Get the lex-lsp client for the current buffer
+-- Get the lexd-lsp client for the current buffer
 local function get_lex_client()
   local clients = vim.lsp.get_clients({ name = "lex_lsp", bufnr = 0 })
   return clients[1]

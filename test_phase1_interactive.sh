@@ -31,16 +31,16 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}=== Lex Neovim Plugin - Phase 1 Manual Testing ===${NC}\n"
 
-# Check if lex-lsp is running
-echo -e "${YELLOW}Checking lex-lsp binary...${NC}"
-if ! command -v lex-lsp &> /dev/null; then
-    echo -e "${RED}Error: lex-lsp not found in PATH${NC}"
+# Check if lexd-lsp is running
+echo -e "${YELLOW}Checking lexd-lsp binary...${NC}"
+if ! command -v lexd-lsp &> /dev/null; then
+    echo -e "${RED}Error: lexd-lsp not found in PATH${NC}"
     echo "Please build and install it first:"
-    echo "  cd lex-lsp && cargo build --release"
+    echo "  cd lexd-lsp && cargo build --release"
     echo "  # Add target/release to your PATH or install it"
     exit 1
 fi
-echo -e "${GREEN}✓ lex-lsp found${NC}\n"
+echo -e "${GREEN}✓ lexd-lsp found${NC}\n"
 
 # Check test file exists
 if [ ! -f "$TEST_FILE" ]; then
@@ -86,7 +86,7 @@ case $answer in
     2)
         echo -e "${RED}✗ Syntax highlighting NOT working${NC}"
         echo "Troubleshooting steps:"
-        echo "  1. Check :LspInfo in nvim to see if lex-lsp is attached"
+        echo "  1. Check :LspInfo in nvim to see if lexd-lsp is attached"
         echo "  2. Check :messages for errors"
         echo "  3. Try :lua vim.lsp.buf.semantic_tokens_full()"
         echo ""
