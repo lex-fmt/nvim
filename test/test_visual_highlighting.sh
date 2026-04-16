@@ -34,11 +34,11 @@ vim.cmd("syntax on")
 -- Set up LSP
 local lspconfig = require("lspconfig")
 local configs = require("lspconfig.configs")
-local exe = vim.fn.exepath("lex-lsp")
-local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (plugin_dir .. "/target/debug/lex-lsp")
+local exe = vim.fn.exepath("lexd-lsp")
+local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (plugin_dir .. "/target/debug/lexd-lsp")
 
 if vim.fn.filereadable(lex_lsp_path) ~= 1 then
-  print("ERROR: lex-lsp binary not found at " .. lex_lsp_path)
+  print("ERROR: lexd-lsp binary not found at " .. lex_lsp_path)
   vim.cmd("cquit 1")
 end
 

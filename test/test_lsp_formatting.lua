@@ -22,8 +22,8 @@ if not lspconfig_ok then
 end
 
 local configs = require("lspconfig.configs")
-local exe = vim.fn.exepath("lex-lsp")
-local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (project_root .. "/target/debug/lex-lsp")
+local exe = vim.fn.exepath("lexd-lsp")
+local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (project_root .. "/target/debug/lexd-lsp")
 
 local function fail(msg)
   print("TEST_FAILED: " .. msg)
@@ -31,7 +31,7 @@ local function fail(msg)
 end
 
 if vim.fn.filereadable(lex_lsp_path) ~= 1 then
-  fail("lex-lsp binary not found at " .. lex_lsp_path)
+  fail("lexd-lsp binary not found at " .. lex_lsp_path)
 end
 
 if not configs.lex_lsp then

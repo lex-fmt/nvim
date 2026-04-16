@@ -15,13 +15,13 @@ end
 
 local configs = require("lspconfig.configs")
 
--- Find the lex-lsp binary
+-- Find the lexd-lsp binary
 local project_root = vim.fn.fnamemodify(plugin_dir, ":h:h")
-local exe = vim.fn.exepath("lex-lsp"); local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (project_root .. "/target/debug/lex-lsp")
+local exe = vim.fn.exepath("lexd-lsp"); local lex_lsp_path = vim.env.LEX_LSP_PATH or (exe ~= "" and exe) or (project_root .. "/target/debug/lexd-lsp")
 
 if vim.fn.filereadable(lex_lsp_path) ~= 1 then
-  print("TEST_FAILED: lex-lsp binary not found at " .. lex_lsp_path)
-  print("Please build with: cargo build --bin lex-lsp")
+  print("TEST_FAILED: lexd-lsp binary not found at " .. lex_lsp_path)
+  print("Please build with: cargo build --bin lexd-lsp")
   vim.cmd("cquit 1")
 end
 

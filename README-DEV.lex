@@ -5,7 +5,7 @@ For user documentation, see README.lex.
 
 1. Architecture
 
-    The Neovim plugin follows the same architecture as VS Code: a thin client layer that delegates all logic to the lex-lsp server via LSP and workspace/executeCommand.
+    The Neovim plugin follows the same architecture as VS Code: a thin client layer that delegates all logic to the lexd-lsp server via LSP and workspace/executeCommand.
 
     Core principle: No Lua-side language logic. All features are driven by LSP.
 
@@ -43,11 +43,11 @@ For user documentation, see README.lex.
         VS Code uses `vscode.languages.registerCompletionItemProvider()`.
 
         Neovim approach:
-        - LSP-native: All completions come from lex-lsp via textDocument/completion
+        - LSP-native: All completions come from lexd-lsp via textDocument/completion
         - Works automatically with any completion plugin (nvim-cmp, coq, etc.)
         - Falls back to built-in `<C-x><C-o>` omnifunc if no plugin installed
 
-        Path completion (@-trigger) is handled server-side in lex-lsp, so it works
+        Path completion (@-trigger) is handled server-side in lexd-lsp, so it works
         identically across all editors.
 
     2.4. Notifications

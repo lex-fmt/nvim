@@ -4,7 +4,7 @@
 local script_path = debug.getinfo(1).source:sub(2)
 local plugin_dir = vim.fn.fnamemodify(script_path, ":p:h:h")
 local project_root = vim.fn.fnamemodify(plugin_dir, ":h:h")
-local lex_lsp_path = project_root .. "/target/debug/lex-lsp"
+local lex_lsp_path = project_root .. "/target/debug/lexd-lsp"
 
 -- Use the lex plugin with debug_theme enabled
 local lex = require("lex")
