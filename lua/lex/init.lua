@@ -143,7 +143,7 @@ function M.setup(opts)
     lsp_config.on_attach = function(client, bufnr)
       -- Enable semantic token highlighting
       if client.server_capabilities.semanticTokensProvider then
-        vim.lsp.semantic_tokens.start(bufnr, client.id)
+        vim.lsp.semantic_tokens.enable(true, { bufnr = bufnr, client_id = client.id })
         theme.apply(theme_name)
       end
 
