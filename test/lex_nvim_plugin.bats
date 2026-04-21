@@ -87,7 +87,31 @@ setup() {
 }
 
 @test "Table cell navigation with Tab/Shift-Tab" {
-    run nvim --headless -u NONE -l "$SCRIPT_DIR/test_table_navigation.lua"
+    run nvim --headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/test_table_navigation.lua"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "TEST_PASSED" ]]
+}
+
+@test "Reorder footnotes command via LSP" {
+    run nvim --headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/test_lsp_reorder_footnotes.lua"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "TEST_PASSED" ]]
+}
+
+@test "Parser diagnostics surface in the buffer" {
+    run nvim --headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/test_lsp_diagnostics.lua"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "TEST_PASSED" ]]
+}
+
+@test "LSP range formatting" {
+    run nvim --headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/test_lsp_range_formatting.lua"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "TEST_PASSED" ]]
+}
+
+@test "Format-on-save autocmd opt-in" {
+    run nvim --headless -u NONE -l "$SCRIPT_DIR/test_format_on_save.lua"
     [ "$status" -eq 0 ]
     [[ "$output" =~ "TEST_PASSED" ]]
 }

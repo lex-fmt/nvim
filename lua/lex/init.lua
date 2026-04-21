@@ -236,6 +236,25 @@ function M.setup(opts)
       vim.schedule(disable_lex_syntax)
     end,
   })
+
+  -- Opt-in format-on-save: `lex.setup({ format_on_save = true })` registers
+  -- a BufWritePre autocmd that runs `vim.lsp.buf.format` on .lex buffers.
+  -- Off by default so users who don't want it don't get it. The formatter
+  -- target is the `lex_lsp` client (by name), so other LSPs that happen to
+  -- attach to the buffer don't race for the format.
+  if opts.format_on_save then
+    vim.api.nvim_create_autocmd("BufWritePre", {
+      group = augroup,
+      pattern = "*.lex",
+      callback = function(ev)
+        vim.lsp.buf.format({
+          bufnr = ev.buf,
+          name = "lex_lsp",
+          async = false,
+        })
+      end,
+    })
+  end
 end
 
 return M
