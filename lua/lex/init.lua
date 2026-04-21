@@ -141,9 +141,14 @@ function M.setup(opts)
     end
 
     lsp_config.on_attach = function(client, bufnr)
-      -- Enable semantic token highlighting
+      -- Enable semantic token highlighting.
+      -- `vim.lsp.semantic_tokens.enable`'s filter table treats `bufnr`
+      -- and `client_id` as mutually exclusive (hard-errors as of
+      -- Neovim 0.12.1). Pass only `bufnr` — on_attach already fires
+      -- per (client, buffer) and is gated on the client's semantic
+      -- tokens capability, so scoping to the buffer is sufficient.
       if client.server_capabilities.semanticTokensProvider then
-        vim.lsp.semantic_tokens.enable(true, { bufnr = bufnr, client_id = client.id })
+        vim.lsp.semantic_tokens.enable(true, { bufnr = bufnr })
         theme.apply(theme_name)
       end
 

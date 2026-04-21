@@ -7,6 +7,18 @@ local test_dir = vim.fn.fnamemodify(script_path, ":p:h")
 local plugin_dir = vim.fn.fnamemodify(test_dir, ":h")
 vim.opt.rtp:prepend(plugin_dir)
 
+-- Install the error-capture shim as early as possible so startup-time
+-- errors (e.g. from plugin loading or LSP on_attach) are recorded too.
+-- Tests that care call `require("lex_test_utils").assert_no_errors()`
+-- at the tail of their success path; the bridge is always installed so
+-- ad-hoc calls like `require("lex_test_utils").captured_errors` work
+-- from every test binary.
+package.path = test_dir .. "/?.lua;" .. package.path
+local lex_test_utils_ok, lex_test_utils = pcall(require, "lex_test_utils")
+if lex_test_utils_ok then
+  lex_test_utils.install()
+end
+
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.loop.fs_stat(lazypath) then
