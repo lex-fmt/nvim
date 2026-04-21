@@ -12,10 +12,13 @@
 -- assert only on protocol-level behaviour (e.g. "semantic tokens
 -- arrive") still pass.
 --
--- The guard intercepts `vim.notify(..., ERROR)` and
--- `vim.api.nvim_err_writeln` (see test/lex_test_utils.lua). This test
--- fails if either fires while a real .lex file is opened with the
--- plugin's own on_attach wired up via `minimal_init.lua`.
+-- The guard intercepts three channels: `vim.notify(..., ERROR)`,
+-- `vim.api.nvim_err_writeln`, and `vim.api.nvim_echo(chunks, history, opts)`
+-- when `opts.err` is truthy (see test/lex_test_utils.lua). The third
+-- channel is the one Neovim's built-in LSP uses for `ON_ATTACH_ERROR`
+-- and other client errors, so it's load-bearing for this test. The
+-- test fails if any of them fires while a real .lex file is opened
+-- with the plugin's own on_attach wired up via `minimal_init.lua`.
 
 local script_path = debug.getinfo(1).source:sub(2)
 local test_dir = vim.fn.fnamemodify(script_path, ":p:h")

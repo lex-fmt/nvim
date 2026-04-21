@@ -66,7 +66,13 @@ function M.install()
 end
 
 function M.reset()
-  M.captured_errors = {}
+  -- Clear in-place rather than reassigning so tests that hold a
+  -- reference to `M.captured_errors` (e.g. closing over it before
+  -- calling `reset()`) keep seeing newly-captured entries. Ignored
+  -- patterns are configured globally and intentionally not reset.
+  for i = #M.captured_errors, 1, -1 do
+    M.captured_errors[i] = nil
+  end
 end
 
 -- Ignore specific error messages that are known to be benign noise in
