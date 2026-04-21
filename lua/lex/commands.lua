@@ -356,6 +356,29 @@ function M.convert_to_lex()
   end
 end
 
+-- Reorder numbered footnote references + definitions so they're sequential
+-- starting at 1, in order of appearance. Server-side implementation in
+-- `lex.footnotes.reorder` (lex-lsp); this function just posts the buffer and
+-- applies the returned text as a whole-document replacement.
+function M.reorder_footnotes()
+  local buf = vim.api.nvim_get_current_buf()
+  if vim.bo[buf].filetype ~= "lex" then
+    vim.notify("Reorder Footnotes is only available for .lex files", vim.log.levels.WARN)
+    return
+  end
+
+  local original_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  local original = table.concat(original_lines, "\n")
+  local result = execute_lsp_command("lex.footnotes.reorder", { original })
+
+  if type(result) ~= "string" or result == original then
+    return
+  end
+
+  local new_lines = vim.split(result, "\n", { plain = true })
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, new_lines)
+end
+
 -- Format the table at cursor via LSP
 function M.format_table()
   local client = get_lex_client()
@@ -407,109 +430,46 @@ function M.format_table()
   vim.notify("Table formatted", vim.log.levels.INFO)
 end
 
--- Navigate between table cells with Tab/Shift-Tab
+-- Navigate between pipe-delimited table cells.
+--
+-- All the pipe-position math lives server-side in lex-lsp (`lex.table.next_cell`
+-- and `lex.table.previous_cell`) since v0.8.3, so this function is just a
+-- forwarder. The LSP returns `{ inTable, position? }`:
+--
+--   - `inTable = false` → cursor is not on a pipe row; emit the editor's
+--     default Tab / outdent so structural indent/dedent still works.
+--   - `inTable = true` with `position` → move the cursor there.
+--   - `inTable = true` without `position` → on a pipe row but no valid
+--     move (table edge, malformed row): no-op.
+--
+-- If the LSP is not reachable we fall through to the default key so a
+-- keystroke is never silently swallowed.
 function M.navigate_table_cell(direction)
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  local line_nr = cursor[1] -- 1-indexed
-  local col = cursor[2] -- 0-indexed
-  local line_text = vim.api.nvim_get_current_line()
+  local command = direction == "next" and "lex.table.next_cell" or "lex.table.previous_cell"
+  local fallthrough = direction == "next" and "<C-t>" or "<C-d>"
 
-  -- Check if we're in a pipe row
-  if not line_text:match("^%s*|") then
-    -- Fall through to default Tab behavior
-    if direction == "next" then
-      vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-t>", true, false, true), "n", false)
-    else
-      vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<C-d>", true, false, true), "n", false)
-    end
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local line = cursor[1] - 1 -- LSP expects 0-indexed line
+  local col = cursor[2]
+  local content = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+
+  local outcome = execute_lsp_command(command, { content, line, col })
+  if not outcome then
+    -- LSP unavailable → default editor behaviour.
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(fallthrough, true, false, true), "n", false)
     return
   end
 
-  -- Find pipe positions in the current line
-  local pipes = {}
-  for i = 1, #line_text do
-    if line_text:sub(i, i) == "|" then
-      pipes[#pipes + 1] = i - 1 -- 0-indexed
-    end
+  if not outcome.inTable then
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(fallthrough, true, false, true), "n", false)
+    return
   end
 
-  if #pipes < 2 then return end
-
-  if direction == "next" then
-    -- Find the next pipe after cursor, then position in next cell
-    local next_pipe = nil
-    for _, p in ipairs(pipes) do
-      if p > col then
-        next_pipe = p
-        break
-      end
-    end
-
-    if next_pipe then
-      -- Find index of next_pipe in pipes
-      local idx = 0
-      for i, p in ipairs(pipes) do
-        if p == next_pipe then idx = i; break end
-      end
-      if idx < #pipes then
-        -- Move to content of next cell (after pipe + space)
-        local target_col = math.min(next_pipe + 2, #line_text)
-        vim.api.nvim_win_set_cursor(0, { line_nr, target_col })
-        return
-      end
-    end
-
-    -- Last cell — move to first cell of next row
-    local next_line_nr = line_nr + 1
-    local line_count = vim.api.nvim_buf_line_count(0)
-    if next_line_nr <= line_count then
-      local next_text = vim.api.nvim_buf_get_lines(0, next_line_nr - 1, next_line_nr, false)[1]
-      if next_text and next_text:match("^%s*|") then
-        local first_pipe = next_text:find("|")
-        if first_pipe then
-          local target_col = math.min(first_pipe + 1, #next_text) -- 0-indexed: first_pipe-1 + 2
-          vim.api.nvim_win_set_cursor(0, { next_line_nr, target_col })
-          return
-        end
-      end
-    end
-  else
-    -- Find pipes before cursor
-    local prev_pipes = {}
-    for _, p in ipairs(pipes) do
-      if p < col then
-        prev_pipes[#prev_pipes + 1] = p
-      end
-    end
-
-    if #prev_pipes >= 2 then
-      -- Move to content of previous cell
-      local target_pipe = prev_pipes[#prev_pipes - 1]
-      local target_col = math.min(target_pipe + 2, #line_text)
-      vim.api.nvim_win_set_cursor(0, { line_nr, target_col })
-      return
-    end
-
-    -- First cell — move to last cell of previous row
-    local prev_line_nr = line_nr - 1
-    if prev_line_nr >= 1 then
-      local prev_text = vim.api.nvim_buf_get_lines(0, prev_line_nr - 1, prev_line_nr, false)[1]
-      if prev_text and prev_text:match("^%s*|") then
-        local prev_pipes_list = {}
-        for i = 1, #prev_text do
-          if prev_text:sub(i, i) == "|" then
-            prev_pipes_list[#prev_pipes_list + 1] = i - 1
-          end
-        end
-        if #prev_pipes_list >= 2 then
-          local target_pipe = prev_pipes_list[#prev_pipes_list - 1]
-          local target_col = math.min(target_pipe + 2, #prev_text)
-          vim.api.nvim_win_set_cursor(0, { prev_line_nr, target_col })
-          return
-        end
-      end
-    end
+  if not outcome.position then
+    return
   end
+
+  vim.api.nvim_win_set_cursor(0, { outcome.position.line + 1, outcome.position.column })
 end
 
 -- Setup all user commands
@@ -557,6 +517,9 @@ function M.setup()
   })
 
   -- Table commands
+  vim.api.nvim_create_user_command("LexReorderFootnotes", M.reorder_footnotes, {
+    desc = "Reorder numbered footnotes to be sequential",
+  })
   vim.api.nvim_create_user_command("LexFormatTable", M.format_table, {
     desc = "Format table at cursor",
   })
