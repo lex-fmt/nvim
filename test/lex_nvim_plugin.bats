@@ -14,6 +14,12 @@ setup() {
     [[ "$output" =~ "TEST_PASSED" ]]
 }
 
+@test "No runtime errors emitted during LSP attach" {
+    run nvim --headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/test_no_errors_on_attach.lua"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "TEST_PASSED" ]]
+}
+
 @test "Binary manager handles version resolution" {
     run nvim --headless -u NONE -l "$SCRIPT_DIR/test_binary_manager.lua"
     [ "$status" -eq 0 ]
