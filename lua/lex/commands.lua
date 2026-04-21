@@ -433,8 +433,8 @@ end
 -- Navigate between pipe-delimited table cells.
 --
 -- All the pipe-position math lives server-side in lex-lsp (`lex.table.next_cell`
--- and `lex.table.previous_cell`) since v0.8.3, so this function is just a
--- forwarder. The LSP returns `{ inTable, position? }`:
+-- and `lex.table.previous_cell`) since v0.8.3, so this function is primarily
+-- a forwarder. The LSP returns `{ inTable, position? }`:
 --
 --   - `inTable = false` → cursor is not on a pipe row; emit the editor's
 --     default Tab / outdent so structural indent/dedent still works.
@@ -442,11 +442,36 @@ end
 --   - `inTable = true` without `position` → on a pipe row but no valid
 --     move (table edge, malformed row): no-op.
 --
--- If the LSP is not reachable we fall through to the default key so a
--- keystroke is never silently swallowed.
+-- Two short-circuits before the LSP call: (1) if the current line is not
+-- a pipe row we fall through locally instead of paying a round-trip per
+-- keystroke; (2) if no `lex_lsp` client is attached to this buffer we
+-- also fall through silently — otherwise `execute_lsp_command` would
+-- emit a "Lex LSP not attached" warning on every Tab.
 function M.navigate_table_cell(direction)
   local command = direction == "next" and "lex.table.next_cell" or "lex.table.previous_cell"
-  local fallthrough = direction == "next" and "<C-t>" or "<C-d>"
+  local fallthrough_key = direction == "next" and "<C-t>" or "<C-d>"
+
+  local function fallthrough()
+    vim.api.nvim_feedkeys(
+      vim.api.nvim_replace_termcodes(fallthrough_key, true, false, true),
+      "n",
+      false
+    )
+  end
+
+  -- Fast path: not on a pipe row → no LSP call needed.
+  if not vim.api.nvim_get_current_line():match("^%s*|") then
+    fallthrough()
+    return
+  end
+
+  -- Silent fall-through when the LSP is unavailable. Checking the client
+  -- up-front also bypasses the warning that execute_lsp_command would
+  -- otherwise emit on every Tab.
+  if not get_lex_client() then
+    fallthrough()
+    return
+  end
 
   local cursor = vim.api.nvim_win_get_cursor(0)
   local line = cursor[1] - 1 -- LSP expects 0-indexed line
@@ -454,14 +479,8 @@ function M.navigate_table_cell(direction)
   local content = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
 
   local outcome = execute_lsp_command(command, { content, line, col })
-  if not outcome then
-    -- LSP unavailable → default editor behaviour.
-    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(fallthrough, true, false, true), "n", false)
-    return
-  end
-
-  if not outcome.inTable then
-    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(fallthrough, true, false, true), "n", false)
+  if not outcome or not outcome.inTable then
+    fallthrough()
     return
   end
 
