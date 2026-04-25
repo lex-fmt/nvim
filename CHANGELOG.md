@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.7.7 (2026-04-24)
+
+### Changed
+
+- Bumped pinned LSP version to v0.8.7 (picks up the comms v0.14.0 spec content).
+- Bumped pinned tree-sitter grammar to v0.9.1 (picks up the new `[::label]` annotation reference syntax and directly-nested inline formatting markers).
+
 ## v0.7.6 (2026-04-22)
 
 ### Changed
