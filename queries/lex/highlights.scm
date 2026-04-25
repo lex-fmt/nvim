@@ -108,7 +108,10 @@
   (annotation_header) @markup.raw.block)
 
 ; === Table structure ===
-; Tables parse as definitions with pipe-row content.
+; Tables are definitions whose body contains table_row nodes. The CST
+; preserves the full hierarchy: definition > table_row > table_cell >
+; text_content — tables are NOT terminal nodes. Cell block content
+; (lists, definitions, etc.) is resolved at the AST level by lex-core.
 
 ; Table caption — italic to distinguish from regular definitions.
 ; Overrides the generic @variable.other.definition capture above.
@@ -153,7 +156,7 @@
 
 ; Specific reference type overrides (later = higher priority)
 (citation_reference) @markup.link
-(footnote_reference) @markup.link
+(annotation_reference) @markup.link
 (url_reference) @markup.link.url
 (file_reference) @markup.link.url
 (session_reference) @markup.link
