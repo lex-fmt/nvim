@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.7.9 (2026-04-26)
+
+- Strengthened the tree-sitter injection test to assert all five fixture
+  languages (python, javascript, json, rust, bash), validate that
+  `@injection.content` ranges are non-empty and inside the buffer, and
+  reject any injection produced for plain (un-annotated) verbatim blocks.
+- Fixed a stale `M.version` constant that had drifted from the released
+  tag, and taught `scripts/create-release` to bump it automatically.
+
 ## v0.7.8 (2026-04-25)
 
 ### Changed
