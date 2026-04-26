@@ -86,40 +86,101 @@ end
 
 print("TEST_PASSED: Injection query loaded")
 
--- Test 3: Run injection query and check for matches
-local injection_langs = {}
-for _, match, metadata in injection_query:iter_matches(root, 0) do
+-- Test 3: Run injection query and check for matches.
+-- Pair each (language, content) capture inside a single match so we can
+-- assert that the language name lines up with a real, non-empty content
+-- range — this is what nvim-treesitter consumes to actually inject.
+local last_buf_line = vim.api.nvim_buf_line_count(0) - 1
+local zones = {} -- list of { lang = string, sr, sc, er, ec }
+local langs_seen = {}
+
+for _, match, _ in injection_query:iter_matches(root, 0) do
+  local lang_text, content_node
   for id, nodes in pairs(match) do
-    local name = injection_query.captures[id]
-    if name == "injection.language" then
-      -- nodes can be a single node or a table of nodes
-      local node = type(nodes) == "table" and nodes[1] or nodes
-      local text = vim.treesitter.get_node_text(node, 0)
-      -- The #gsub! directive strips parameters, but we can check raw text
-      local lang = text:match("^%s*(%S+)")
-      if lang then
-        injection_langs[lang] = true
-      end
+    local cap_name = injection_query.captures[id]
+    local node = type(nodes) == "table" and nodes[1] or nodes
+    if cap_name == "injection.language" then
+      lang_text = vim.treesitter.get_node_text(node, 0)
+    elseif cap_name == "injection.content" then
+      content_node = node
+    end
+  end
+  if lang_text and content_node then
+    local lang = lang_text:match("^%s*(%S+)")
+    if lang and lang ~= "table" then
+      local sr, sc, er, ec = content_node:range()
+      table.insert(zones, { lang = lang, sr = sr, sc = sc, er = er, ec = ec })
+      langs_seen[lang] = (langs_seen[lang] or 0) + 1
     end
   end
 end
 
-if not injection_langs["python"] then
-  print("TEST_FAILED: No python injection detected")
-  vim.cmd("cquit 1")
+-- Every language in the fixture should appear at least once.
+for _, expected in ipairs({ "python", "javascript", "json", "rust", "bash" }) do
+  if not langs_seen[expected] then
+    print("TEST_FAILED: No " .. expected .. " injection detected")
+    vim.cmd("cquit 1")
+  end
 end
 
-if not injection_langs["json"] then
-  print("TEST_FAILED: No json injection detected")
-  vim.cmd("cquit 1")
+print(string.format("TEST_PASSED: Injection zones detected for %d languages (%d total zones)",
+  vim.tbl_count(langs_seen), #zones))
+
+-- Every zone must have a non-empty content range that lies inside the buffer.
+for _, z in ipairs(zones) do
+  if z.sr > z.er or (z.sr == z.er and z.sc >= z.ec) then
+    print(string.format("TEST_FAILED: Empty/invalid range for %s: %d:%d -> %d:%d",
+      z.lang, z.sr, z.sc, z.er, z.ec))
+    vim.cmd("cquit 1")
+  end
+  if z.er > last_buf_line + 1 then
+    print(string.format("TEST_FAILED: Range for %s extends past buffer (%d > %d)",
+      z.lang, z.er, last_buf_line + 1))
+    vim.cmd("cquit 1")
+  end
 end
 
-if not injection_langs["bash"] then
-  print("TEST_FAILED: No bash injection detected (verbatim group)")
-  vim.cmd("cquit 1")
+print("TEST_PASSED: All injection.content ranges are well-formed and inside the buffer")
+
+-- The "plain verbatim" block (no annotation) must NOT produce an injection.
+-- Walk the tree and find a verbatim_block whose annotation_header text is
+-- empty/missing; assert no zone overlaps its content range.
+local function find_plain_verbatim(node)
+  if node:type() == "verbatim_block" then
+    local has_lang_annotation = false
+    for child in node:iter_children() do
+      if child:type() == "annotation_header" then
+        local text = vim.treesitter.get_node_text(child, 0) or ""
+        if text:match("%S") then
+          has_lang_annotation = true
+        end
+      end
+    end
+    if not has_lang_annotation then
+      return node
+    end
+  end
+  for child in node:iter_children() do
+    local found = find_plain_verbatim(child)
+    if found then return found end
+  end
+  return nil
 end
 
-print("TEST_PASSED: Injection zones detected: python, json, bash (group)")
+local plain = find_plain_verbatim(root)
+if plain then
+  local psr, _, per, _ = plain:range()
+  for _, z in ipairs(zones) do
+    if z.sr >= psr and z.er <= per then
+      print(string.format("TEST_FAILED: Plain verbatim block (%d-%d) wrongly produced %s injection",
+        psr, per, z.lang))
+      vim.cmd("cquit 1")
+    end
+  end
+  print("TEST_PASSED: Plain verbatim block correctly produced no injection")
+else
+  print("TEST_PASSED: (no plain verbatim block in fixture; skipped negative check)")
+end
 
 -- Test 4: Verify no ERROR nodes in the fixture
 local has_error = false

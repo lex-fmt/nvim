@@ -89,9 +89,21 @@ cat > "$UNRELEASED" <<'TEMPLATE'
 <!-- Updated as work is done; consumed by scripts/create-release. -->
 TEMPLATE
 
+# --- Bump M.version in lua/lex/init.lua ---
+
+INIT_LUA="$REPO_ROOT/lua/lex/init.lua"
+VERSION_NO_V="${VERSION#v}"
+sed -i.bak -E "s|^(M\.version = )\"[^\"]+\"|\\1\"$VERSION_NO_V\"|" "$INIT_LUA"
+rm -f "$INIT_LUA.bak"
+
+if ! grep -qF "M.version = \"$VERSION_NO_V\"" "$INIT_LUA"; then
+  echo "error: failed to bump M.version in $INIT_LUA" >&2
+  exit 1
+fi
+
 # --- Commit, tag, push ---
 
-git add CHANGELOG.md UNRELEASED.md
+git add CHANGELOG.md UNRELEASED.md lua/lex/init.lua
 git commit -m "Release $VERSION"
 git tag -a "$VERSION" -m "$NOTES"
 git push
