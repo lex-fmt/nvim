@@ -23,7 +23,8 @@ M.COLORS = {
   },
 }
 
--- Each entry: { token, intensity, bold?, italic?, underline?, background? }
+-- Each entry: { token = ..., intensity = ..., bold? = true,
+--   italic? = true, underline? = true, background? = ... }
 -- intensity ∈ { 'normal', 'muted', 'faint', 'faintest' }; background
 -- references a key in COLORS[mode] (currently only 'code_bg').
 M.TOKENS = {

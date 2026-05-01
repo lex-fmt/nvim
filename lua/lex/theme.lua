@@ -54,10 +54,10 @@ function M.apply_native()
 end
 
 -- Apply monochrome theme: grayscale highlighting that adapts to dark/light mode.
--- Palette + token rules come from lua/lex/theme-data.lua, which is generated
+-- Palette + token rules come from lua/lex/theme_data.lua, which is generated
 -- by scripts/gen-theme.py from comms/shared/theming/lex-theme.json.
 function M.apply_monochrome()
-  local theme_data = require("lex.theme-data")
+  local theme_data = require("lex.theme_data")
   local mode = vim.o.background == "dark" and "dark" or "light"
   local colors = theme_data.COLORS[mode]
 

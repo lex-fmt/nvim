@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Generate lua/lex/theme-data.lua from the canonical theme data in
+"""Generate lua/lex/theme_data.lua from the canonical theme data in
 `comms/shared/theming/lex-theme.json`.
 
 Emits two tables:
 
 - M.COLORS — { dark = {...}, light = {...} } palettes covering the 4
   intensity tiers and the code_bg background.
-- M.TOKENS — the token list, each entry { token, intensity, bold?,
-  italic?, underline?, background? }. The `bold/italic/underline`
+- M.TOKENS — the token list, each entry a keyed Lua table:
+  { token = ..., intensity = ..., bold? = true, italic? = true,
+  underline? = true, background? = ... }. The `bold/italic/underline`
   booleans match what `vim.api.nvim_set_hl` accepts directly.
 
 The runtime in `lua/lex/theme.lua` consumes these tables in its
@@ -27,7 +28,7 @@ from pathlib import Path
 
 REPO_DIR = Path(__file__).resolve().parent.parent
 CANONICAL = REPO_DIR / "comms" / "shared" / "theming" / "lex-theme.json"
-TARGET = REPO_DIR / "lua" / "lex" / "theme-data.lua"
+TARGET = REPO_DIR / "lua" / "lex" / "theme_data.lua"
 
 
 def lua_str(value: str) -> str:
@@ -76,7 +77,8 @@ def render(canonical: dict) -> str:
         "  },\n"
         "}\n"
         "\n"
-        "-- Each entry: { token, intensity, bold?, italic?, underline?, background? }\n"
+        "-- Each entry: { token = ..., intensity = ..., bold? = true,\n"
+        "--   italic? = true, underline? = true, background? = ... }\n"
         "-- intensity ∈ { 'normal', 'muted', 'faint', 'faintest' }; background\n"
         "-- references a key in COLORS[mode] (currently only 'code_bg').\n"
         "M.TOKENS = {\n"
@@ -96,7 +98,7 @@ def main() -> int:
         )
         return 1
 
-    canonical = json.loads(CANONICAL.read_text())
+    canonical = json.loads(CANONICAL.read_text(encoding="utf-8"))
     expected = render(canonical)
     TARGET.parent.mkdir(parents=True, exist_ok=True)
 
@@ -104,18 +106,22 @@ def main() -> int:
         if not TARGET.exists():
             print(f"FAIL: {TARGET.relative_to(REPO_DIR)} missing", file=sys.stderr)
             return 1
-        actual = TARGET.read_text()
-        if actual != expected:
+        # Read with explicit UTF-8 + normalize CRLF → LF before compare so
+        # the check doesn't false-positive on Windows checkouts that
+        # rewrite line endings.
+        actual = TARGET.read_text(encoding="utf-8").replace("\r\n", "\n")
+        expected_normalized = expected.replace("\r\n", "\n")
+        if actual != expected_normalized:
             print(
                 f"FAIL: {TARGET.relative_to(REPO_DIR)} out of sync.\n"
-                f"      Run: python3 scripts/gen-theme.py",
+                f"      Run: python scripts/gen-theme.py",
                 file=sys.stderr,
             )
             return 1
         print(f"  ✓ {TARGET.relative_to(REPO_DIR)} matches generator")
         return 0
 
-    TARGET.write_text(expected)
+    TARGET.write_text(expected, encoding="utf-8")
     print(f"wrote {TARGET.relative_to(REPO_DIR)}")
     return 0
 
