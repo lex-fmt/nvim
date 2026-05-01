@@ -26,6 +26,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bats
 
+      - name: Verify generated theme is in sync with comms
+        run: python3 scripts/gen-theme.py --check
+
       - name: Read pinned versions
         id: deps
         run: |

@@ -53,22 +53,13 @@ function M.apply_native()
   end
 end
 
--- Apply monochrome theme: grayscale highlighting that adapts to dark/light mode
+-- Apply monochrome theme: grayscale highlighting that adapts to dark/light mode.
+-- Palette + token rules come from lua/lex/theme-data.lua, which is generated
+-- by scripts/gen-theme.py from comms/shared/theming/lex-theme.json.
 function M.apply_monochrome()
-  local is_dark = vim.o.background == "dark"
-  local colors = is_dark and {
-    normal = "#e0e0e0",   -- light gray on dark bg
-    muted = "#888888",    -- medium gray
-    faint = "#666666",    -- darker gray
-    faintest = "#555555", -- darkest gray for markers
-    code_bg = "#2a2a2a",  -- subtle dark bg for code
-  } or {
-    normal = "#000000",   -- black on light bg
-    muted = "#808080",    -- medium gray
-    faint = "#b3b3b3",    -- light gray
-    faintest = "#cacaca", -- lightest gray for markers
-    code_bg = "#f5f5f5",  -- subtle light bg for code
-  }
+  local theme_data = require("lex.theme-data")
+  local mode = vim.o.background == "dark" and "dark" or "light"
+  local colors = theme_data.COLORS[mode]
 
   -- Define base intensity groups (user-overridable)
   vim.api.nvim_set_hl(0, "@lex.normal", { fg = colors.normal, default = true })
@@ -76,47 +67,16 @@ function M.apply_monochrome()
   vim.api.nvim_set_hl(0, "@lex.faint", { fg = colors.faint, default = true })
   vim.api.nvim_set_hl(0, "@lex.faintest", { fg = colors.faintest, default = true })
 
-  -- NORMAL intensity: content text readers focus on
-  vim.api.nvim_set_hl(0, "@lsp.type.SessionTitleText", { fg = colors.normal, bold = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.DefinitionSubject", { fg = colors.normal, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.DefinitionContent", { fg = colors.normal })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineStrong", { fg = colors.normal, bold = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineEmphasis", { fg = colors.normal, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineCode", { fg = colors.normal })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineMath", { fg = colors.normal, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.VerbatimContent", { fg = colors.normal, bg = colors.code_bg })
-  vim.api.nvim_set_hl(0, "@lsp.type.ListItemText", { fg = colors.normal })
-
-  -- NORMAL intensity: document title (bold + underline) and subtitle (italic)
-  vim.api.nvim_set_hl(0, "@lsp.type.DocumentTitle", { fg = colors.normal, bold = true, underline = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.DocumentSubtitle", { fg = colors.normal, italic = true })
-
-  -- MUTED intensity: structural elements (markers, references)
-  vim.api.nvim_set_hl(0, "@lsp.type.SessionMarker", { fg = colors.muted, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.ListMarker", { fg = colors.muted, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.Reference", { fg = colors.muted, underline = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.ReferenceCitation", { fg = colors.muted, underline = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.ReferenceFootnote", { fg = colors.muted, underline = true })
-
-  -- FAINT intensity: meta-information (annotations, verbatim metadata)
-  vim.api.nvim_set_hl(0, "@lsp.type.AnnotationLabel", { fg = colors.faint })
-  vim.api.nvim_set_hl(0, "@lsp.type.AnnotationParameter", { fg = colors.faint })
-  vim.api.nvim_set_hl(0, "@lsp.type.AnnotationContent", { fg = colors.faint })
-  vim.api.nvim_set_hl(0, "@lsp.type.VerbatimSubject", { fg = colors.faint })
-  vim.api.nvim_set_hl(0, "@lsp.type.VerbatimLanguage", { fg = colors.faint })
-  vim.api.nvim_set_hl(0, "@lsp.type.VerbatimAttribute", { fg = colors.faint })
-
-  -- FAINTEST intensity: inline syntax markers (*, _, `, #, [])
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineMarker_strong_start", { fg = colors.faintest, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineMarker_strong_end", { fg = colors.faintest, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineMarker_emphasis_start", { fg = colors.faintest, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineMarker_emphasis_end", { fg = colors.faintest, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineMarker_code_start", { fg = colors.faintest, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineMarker_code_end", { fg = colors.faintest, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineMarker_math_start", { fg = colors.faintest, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineMarker_math_end", { fg = colors.faintest, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineMarker_ref_start", { fg = colors.faintest, italic = true })
-  vim.api.nvim_set_hl(0, "@lsp.type.InlineMarker_ref_end", { fg = colors.faintest, italic = true })
+  -- Apply each token rule. The data carries intensity + style flags +
+  -- optional background; resolve them against the live palette here.
+  for _, rule in ipairs(theme_data.TOKENS) do
+    local hl = { fg = colors[rule.intensity] }
+    if rule.bold then hl.bold = true end
+    if rule.italic then hl.italic = true end
+    if rule.underline then hl.underline = true end
+    if rule.background then hl.bg = colors[rule.background] end
+    vim.api.nvim_set_hl(0, "@lsp.type." .. rule.token, hl)
+  end
 end
 
 -- Apply tree-sitter highlight groups scoped to lex filetype.
