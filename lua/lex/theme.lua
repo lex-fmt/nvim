@@ -56,25 +56,25 @@ end
 -- Apply monochrome theme: grayscale highlighting that adapts to dark/light mode.
 -- Palette + token rules come from lua/lex/theme_data.lua, which is generated
 -- by scripts/gen-theme.py from comms/shared/theming/lex-theme.json.
+-- All colors are pre-resolved per mode at generate time; no runtime indirection.
 function M.apply_monochrome()
   local theme_data = require("lex.theme_data")
   local mode = vim.o.background == "dark" and "dark" or "light"
-  local colors = theme_data.COLORS[mode]
+  local palette = theme_data.PALETTE[mode]
 
   -- Define base intensity groups (user-overridable)
-  vim.api.nvim_set_hl(0, "@lex.normal", { fg = colors.normal, default = true })
-  vim.api.nvim_set_hl(0, "@lex.muted", { fg = colors.muted, default = true })
-  vim.api.nvim_set_hl(0, "@lex.faint", { fg = colors.faint, default = true })
-  vim.api.nvim_set_hl(0, "@lex.faintest", { fg = colors.faintest, default = true })
+  vim.api.nvim_set_hl(0, "@lex.normal", { fg = palette.normal, default = true })
+  vim.api.nvim_set_hl(0, "@lex.muted", { fg = palette.muted, default = true })
+  vim.api.nvim_set_hl(0, "@lex.faint", { fg = palette.faint, default = true })
+  vim.api.nvim_set_hl(0, "@lex.faintest", { fg = palette.faintest, default = true })
 
-  -- Apply each token rule. The data carries intensity + style flags +
-  -- optional background; resolve them against the live palette here.
-  for _, rule in ipairs(theme_data.TOKENS) do
-    local hl = { fg = colors[rule.intensity] }
+  -- Apply each token rule directly: fg/bg are already resolved hex.
+  for _, rule in ipairs(theme_data.RULES[mode]) do
+    local hl = { fg = rule.fg }
     if rule.bold then hl.bold = true end
     if rule.italic then hl.italic = true end
     if rule.underline then hl.underline = true end
-    if rule.background then hl.bg = colors[rule.background] end
+    if rule.bg then hl.bg = rule.bg end
     vim.api.nvim_set_hl(0, "@lsp.type." .. rule.token, hl)
   end
 end

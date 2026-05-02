@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Lex Monochrome theme colors are now resolved at generate time, matching
+  the strategy used by the vscode and zed editor packages.
+  `scripts/gen-theme.py` emits `lua/lex/theme_data.lua` with per-mode
+  `PALETTE` and `RULES` tables carrying absolute hex values pre-resolved
+  from the canonical intensity/background tiers in
+  `comms/shared/theming/lex-theme.json`. The `apply_monochrome` runtime
+  path picks the table by `vim.o.background` and applies entries
+  directly — no `colors[rule.intensity]` indirection. No visual change;
+  same hex values, resolved once at generate time instead of at every
+  apply.
+
 ## v0.7.9 (2026-04-26)
 
 - Strengthened the tree-sitter injection test to assert all five fixture
@@ -33,14 +48,3 @@
 - Bumped pinned LSP version to v0.8.5. Picks up two `lex-analysis` diagnostic fixes from lexd-lsp:
   - `missing-footnote` no longer false-positives on numbered references in a table cell when the resolving list is the table's own positional footnote list (lex-fmt/lex#460).
   - `table-inconsistent-columns` correctly accounts for `^^` rowspan carry-over when computing effective row width (lex-fmt/lex#458).
-
-## Unreleased
-
-### Changed
-
-- Renamed LSP binary references from `lex-lsp` to `lexd-lsp` (companion to lex-fmt/lex#450)
-- Bumped pinned LSP version to v0.8.5 (picks up the table-scoped footnote resolver fix from lex-fmt/lex#460 and the rowspan diagnostic fix from lex-fmt/lex#458)
-
-### Fixed
-
-- Replaced deprecated `vim.lsp.semantic_tokens.start` with `vim.lsp.semantic_tokens.enable` (removed in Nvim 0.13)
