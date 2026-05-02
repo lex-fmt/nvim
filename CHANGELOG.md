@@ -1,20 +1,5 @@
 # Changelog
 
-## Unreleased
-
-### Changed
-
-- Lex Monochrome theme colors are now resolved at generate time, matching
-  the strategy used by the vscode and zed editor packages.
-  `scripts/gen-theme.py` emits `lua/lex/theme_data.lua` with per-mode
-  `PALETTE` and `RULES` tables carrying absolute hex values pre-resolved
-  from the canonical intensity/background tiers in
-  `comms/shared/theming/lex-theme.json`. The `apply_monochrome` runtime
-  path picks the table by `vim.o.background` and applies entries
-  directly — no `colors[rule.intensity]` indirection. No visual change;
-  same hex values, resolved once at generate time instead of at every
-  apply.
-
 ## v0.7.9 (2026-04-26)
 
 - Strengthened the tree-sitter injection test to assert all five fixture
