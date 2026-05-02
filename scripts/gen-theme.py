@@ -2,18 +2,25 @@
 """Generate lua/lex/theme_data.lua from the canonical theme data in
 `comms/shared/theming/lex-theme.json`.
 
-Emits one table per mode of pre-resolved highlight entries:
+Emits two per-mode tables of pre-resolved hex values:
+
+  M.PALETTE = {
+    dark  = { normal = "#...", muted = "#...", faint = "#...", faintest = "#..." },
+    light = { ... },
+  }
 
   M.RULES = {
     dark  = { { token = "...", fg = "#...", bold = true, ... }, ... },
     light = { { token = "...", fg = "#...", bold = true, ... }, ... },
   }
 
-Each entry's `fg` (and optional `bg`) is the absolute hex value resolved
-from the canonical intensity/background tier at generate time. The
-runtime in `lua/lex/theme.lua`'s `apply_monochrome` picks the table by
-`vim.o.background` and applies entries directly to `nvim_set_hl` —
-no further indirection.
+`M.PALETTE` exposes the four intensity tiers for the user-overridable
+`@lex.{normal,muted,faint,faintest}` base groups. `M.RULES` is the
+per-token highlight list; each entry's `fg` (and optional `bg`) is the
+absolute hex value resolved from the canonical intensity/background tier
+at generate time. The runtime in `lua/lex/theme.lua`'s
+`apply_monochrome` picks both tables by `vim.o.background` and applies
+entries directly to `nvim_set_hl` — no further indirection.
 
 The `apply_native` and `apply_treesitter_*` paths stay hand-written:
 they target tree-sitter captures and standard markup groups, not the
