@@ -54,8 +54,12 @@ jobs:
 
       - name: Extract and install lexd-lsp
         run: |
-          tar -xzf /tmp/lexd-lsp-x86_64-unknown-linux-gnu.tar.gz -C /usr/local/bin/
-          chmod +x /usr/local/bin/lexd-lsp
+          mkdir -p /tmp/lexd-lsp-extract
+          tar -xzf /tmp/lexd-lsp-x86_64-unknown-linux-gnu.tar.gz -C /tmp/lexd-lsp-extract
+          # arthur-debert/release@v1 packages binaries under <name>-<target>/, but
+          # earlier releases had the binary at the top level — find it either way.
+          BIN=$(find /tmp/lexd-lsp-extract -name lexd-lsp -type f | head -1)
+          sudo install -m 0755 "$BIN" /usr/local/bin/lexd-lsp
 
       - name: Download tree-sitter source
         uses: robinraju/release-downloader@v1.8
