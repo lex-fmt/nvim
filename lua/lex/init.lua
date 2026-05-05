@@ -153,6 +153,29 @@ function M.setup(opts)
         theme.apply(theme_name)
       end
 
+      -- Make diagnostics visible by default, scoped to lexd-lsp's
+      -- namespace so we don't override the user's global config or
+      -- step on other language servers in the same nvim. Without
+      -- this the LSP's diagnostics arrive (vim.diagnostic.get(0)
+      -- returns them) but render nothing on screen unless the user
+      -- has called vim.diagnostic.config({...}) themselves.
+      --
+      -- We deliberately only flip what's *enabled* (virtual_text,
+      -- signs, underline) and leave highlight groups, sign chars,
+      -- and message formatting to the user's colorscheme. Lex-themed
+      -- diagnostics (monochrome intensity tiers, custom sign chars)
+      -- are a separate opt-in design choice, not the default.
+      if vim.lsp.diagnostic and vim.lsp.diagnostic.get_namespace then
+        local ns = vim.lsp.diagnostic.get_namespace(client.id)
+        vim.diagnostic.config({
+          virtual_text = true,
+          signs = true,
+          underline = true,
+          severity_sort = true,
+          update_in_insert = false,
+        }, ns)
+      end
+
       -- Setup buffer-local keymaps for commands
       commands.setup_keymaps(bufnr)
 
