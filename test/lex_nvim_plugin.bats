@@ -26,6 +26,12 @@ setup() {
     [[ "$output" =~ "TEST_PASSED" ]]
 }
 
+@test "Trust prompt formatters and response builder" {
+    run nvim --headless -u NONE -l "$SCRIPT_DIR/test_trust_prompt.lua"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "TEST_PASSED" ]]
+}
+
 @test "Filetype detection for .lex files" {
     run nvim --headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/test_filetype.lua"
     [ "$status" -eq 0 ]
