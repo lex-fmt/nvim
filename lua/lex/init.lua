@@ -147,8 +147,15 @@ function M.setup(opts)
     -- in this workspace. Without this, the LSP's prompt would error
     -- out and the namespace would register schema-only with a "trust
     -- request failed" diagnostic.
+    --
+    -- Preserve any user-provided override: if a user wires their own
+    -- `handlers["lex/trustRequest"]` (e.g. for an automated test
+    -- harness, or a programmatic auto-deny), keep it. Same convention
+    -- as the `on_attach` handling above.
     local user_handlers = lsp_config.handlers or {}
-    user_handlers["lex/trustRequest"] = trust_prompt.handle
+    if user_handlers["lex/trustRequest"] == nil then
+      user_handlers["lex/trustRequest"] = trust_prompt.handle
+    end
     lsp_config.handlers = user_handlers
 
     lsp_config.on_attach = function(client, bufnr)

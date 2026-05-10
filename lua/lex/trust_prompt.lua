@@ -17,7 +17,10 @@
 
 local M = {}
 
---- Format the modal title shown by vim.fn.confirm.
+--- Format the full prompt body shown to the user. vim.fn.confirm doesn't
+--- have a separate title — the message argument carries everything the
+--- user reads, so this composes namespace + source + command +
+--- capabilities + the trust/deny rationale into one string.
 --- @param params table TrustRequestParams from the LSP server.
 --- @return string
 function M.format_message(params)
@@ -67,7 +70,11 @@ function M.describe_capability(capability)
 end
 
 --- Build the LSP response for the user's confirm choice.
---- @param namespace string Namespace from the request, used in deny reasons.
+--- @param namespace string|nil Namespace from the request, used in deny
+---   reasons. Nil-safe for the defensive case where the LSP request
+---   arrives without a namespace field; callers from `M.handle` pass
+---   `params.namespace` which may be nil if the wire payload was
+---   malformed.
 --- @param confirm_result integer Return value from vim.fn.confirm:
 ---   1 = Trust, 2 = Deny, 0 = Cancelled (Esc / outside-click).
 --- @return table TrustResponse — { decision, reason? }.
