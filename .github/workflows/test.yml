@@ -43,7 +43,7 @@ jobs:
           echo "Using lexd-lsp $LEX_LSP_VERSION from $LEX_LSP_REPO, tree-sitter $TREE_SITTER_VERSION from $TREE_SITTER_REPO"
 
       - name: Download lexd-lsp binary
-        uses: robinraju/release-downloader@v1.8
+        uses: robinraju/release-downloader@v1.13
         with:
           repository: ${{ steps.deps.outputs.lsp_repo }}
           tag: ${{ steps.deps.outputs.lsp_version }}
@@ -62,7 +62,7 @@ jobs:
           sudo install -m 0755 "$BIN" /usr/local/bin/lexd-lsp
 
       - name: Download tree-sitter source
-        uses: robinraju/release-downloader@v1.8
+        uses: robinraju/release-downloader@v1.13
         with:
           repository: ${{ steps.deps.outputs.ts_repo }}
           tag: ${{ steps.deps.outputs.ts_version }}
