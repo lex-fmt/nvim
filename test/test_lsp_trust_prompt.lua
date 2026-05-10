@@ -115,21 +115,78 @@ add_test('handle composes a meaningful prompt for vim.fn.confirm', function()
   end)
 end)
 
-add_test('init.lua wires trust_prompt.handle into lsp_config.handlers', function()
-  -- Exercise the same path init.lua uses to register the handler:
-  -- after setup(), the user's lsp_config.handlers["lex/trustRequest"]
-  -- should be trust_prompt.handle (when no override was supplied).
-  --
-  -- We can't run the full plugin setup() without lspconfig in the
-  -- test runtime, so verify the contract by reading the plugin
-  -- module's expectation directly: the handler it'll register.
-  local trust_prompt = require('lex.trust_prompt')
-  if type(trust_prompt.handle) ~= 'function' then
-    error(
-      'trust_prompt.handle must be a function — init.lua assigns it as '
-        .. 'lsp_config.handlers["lex/trustRequest"]'
-    )
+--- Stub lspconfig + lspconfig.configs so we can call lex.setup()
+--- without a real LSP server. The stub captures the config that
+--- lex.setup() passes into `lspconfig.lex_lsp.setup(...)`, so the
+--- test can assert what handlers / on_attach hooks the plugin
+--- registered.
+local function with_stubbed_lspconfig(body)
+  local captured = {}
+  local original_loaded_lspconfig = package.loaded['lspconfig']
+  local original_loaded_configs = package.loaded['lspconfig.configs']
+  local original_loaded_lex = package.loaded['lex']
+
+  package.loaded['lspconfig'] = {
+    util = {
+      find_git_ancestor = function(_)
+        return vim.fn.getcwd()
+      end,
+    },
+    lex_lsp = {
+      setup = function(cfg)
+        captured.config = cfg
+      end,
+    },
+  }
+  package.loaded['lspconfig.configs'] = {}
+  -- Force lex/init to re-require lspconfig via our stub on next
+  -- require('lex').
+  package.loaded['lex'] = nil
+
+  local ok, err = pcall(body, captured)
+
+  package.loaded['lspconfig'] = original_loaded_lspconfig
+  package.loaded['lspconfig.configs'] = original_loaded_configs
+  package.loaded['lex'] = original_loaded_lex
+
+  if not ok then
+    error(err)
   end
+end
+
+add_test('lex.setup wires trust_prompt.handle into lsp_config.handlers', function()
+  local trust_prompt = require('lex.trust_prompt')
+  with_stubbed_lspconfig(function(captured)
+    require('lex').setup({})
+    assert_equal(
+      captured.config and captured.config.handlers
+        and captured.config.handlers['lex/trustRequest'],
+      trust_prompt.handle,
+      'init.lua should register trust_prompt.handle as lex/trustRequest handler'
+    )
+  end)
+end)
+
+add_test('lex.setup preserves a user-supplied lex/trustRequest handler', function()
+  -- The plugin must NOT clobber a user-supplied handler — same
+  -- on_attach convention applies to handlers. Test that a
+  -- pre-set lex/trustRequest is respected.
+  with_stubbed_lspconfig(function(captured)
+    local user_handler = function()
+      return { decision = 'denied', reason = 'user override' }
+    end
+    require('lex').setup({
+      lsp_config = {
+        handlers = { ['lex/trustRequest'] = user_handler },
+      },
+    })
+    assert_equal(
+      captured.config and captured.config.handlers
+        and captured.config.handlers['lex/trustRequest'],
+      user_handler,
+      'a user-supplied lex/trustRequest handler must NOT be overwritten'
+    )
+  end)
 end)
 
 local function run_tests()

@@ -16,12 +16,16 @@
   with `lexd-lsp` v0.11+ which adds the trust-request forwarding
   (lex-fmt/lex#549). Part of the γ phase of the extension system
   (lex-fmt/lex#516).
-- New integration test (`test/test_lsp_trust_prompt.lua`) covering
-  the trust-prompt wiring: invokes `trust_prompt.handle()` directly
-  with a patched `vim.fn.confirm` and asserts that Trust → trusted,
-  Deny → denied with reason, cancelled (Esc / `confirm=0`) → also
-  denied (fail-closed); and that the prompt body composed for
-  `vim.fn.confirm` mentions namespace + command + source + capability.
+- New integration test (`test/test_lsp_trust_prompt.lua`) covering:
+  - the `trust_prompt.handle()` contract — Trust → trusted, Deny →
+    denied with reason, cancelled (Esc / `confirm=0`) → also denied
+    (fail-closed) — with `vim.fn.confirm` patched so the test
+    captures the user-facing prompt body
+  - `lex.setup()` wiring — with `lspconfig` / `lspconfig.configs`
+    stubbed via `package.loaded`, asserts that the plugin
+    registers `trust_prompt.handle` as the
+    `lsp_config.handlers["lex/trustRequest"]` value, and that a
+    user-supplied override is preserved (not clobbered).
 
 ### Changed
 
