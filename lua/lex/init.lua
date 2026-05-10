@@ -13,6 +13,7 @@ local theme = require("lex.theme")
 local lex_debug = require("lex.debug")
 local commands = require("lex.commands")
 local treesitter = require("lex.treesitter")
+local trust_prompt = require("lex.trust_prompt")
 
 local M = {}
 
@@ -140,6 +141,22 @@ function M.setup(opts)
     if not lsp_config.cmd then
       lsp_config.cmd = resolved_cmd
     end
+
+    -- Register the `lex/trustRequest` server-initiated request handler
+    -- so subprocess handlers can prompt the user when not yet trusted
+    -- in this workspace. Without this, the LSP's prompt would error
+    -- out and the namespace would register schema-only with a "trust
+    -- request failed" diagnostic.
+    --
+    -- Preserve any user-provided override: if a user wires their own
+    -- `handlers["lex/trustRequest"]` (e.g. for an automated test
+    -- harness, or a programmatic auto-deny), keep it. Same convention
+    -- as the `on_attach` handling above.
+    local user_handlers = lsp_config.handlers or {}
+    if user_handlers["lex/trustRequest"] == nil then
+      user_handlers["lex/trustRequest"] = trust_prompt.handle
+    end
+    lsp_config.handlers = user_handlers
 
     lsp_config.on_attach = function(client, bufnr)
       -- Enable semantic token highlighting.
