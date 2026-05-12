@@ -116,6 +116,12 @@ setup() {
     [[ "$output" =~ "TEST_PASSED" ]]
 }
 
+@test "Extract to include command via LSP" {
+    run nvim --headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/test_lsp_extract_to_include.lua"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "TEST_PASSED" ]]
+}
+
 @test "Parser diagnostics surface in the buffer" {
     run nvim --headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/test_lsp_diagnostics.lua"
     [ "$status" -eq 0 ]
