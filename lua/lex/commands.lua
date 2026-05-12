@@ -128,6 +128,68 @@ function M.toggle_annotations()
   end
 end
 
+-- Get the current visual selection as an LSP Range (0-indexed, end-exclusive).
+-- Returns nil when called outside visual mode (no selection).
+local function get_visual_selection_range()
+  -- '< and '> are the marks left by the last visual selection. After the user
+  -- triggers a command from visual mode they're already set; in operator-pending
+  -- modes they're stale, so we resolve them here rather than reading vim.fn.mode().
+  local start_pos = vim.api.nvim_buf_get_mark(0, "<")
+  local end_pos = vim.api.nvim_buf_get_mark(0, ">")
+  if start_pos[1] == 0 or end_pos[1] == 0 then
+    return nil
+  end
+  -- Marks are (1-indexed line, 0-indexed col). LSP wants 0-indexed for both,
+  -- and "end" is exclusive — visual marks are inclusive, so we step past the
+  -- selected end character. UTF-8 byte offsets match lexd-lsp's column convention.
+  return {
+    start = { line = start_pos[1] - 1, character = start_pos[2] },
+    ["end"] = { line = end_pos[1] - 1, character = end_pos[2] + 1 },
+  }
+end
+
+function M.extract_to_include()
+  local range = get_visual_selection_range()
+  if not range then
+    vim.notify("Make a visual selection before running LexExtractToInclude", vim.log.levels.ERROR)
+    return
+  end
+
+  local client = get_lex_client()
+  if not client then
+    vim.notify("Lex LSP not attached", vim.log.levels.WARN)
+    return
+  end
+
+  local uri = vim.uri_from_bufnr(0)
+  vim.ui.input({ prompt = "Include path (relative to includes root): " }, function(src)
+    if not src or src == "" then
+      return
+    end
+    -- Use the raw request_sync result rather than `execute_lsp_command` so
+    -- we can surface the server's `invalid_params` message (which carries
+    -- the typed `ExtractError` text) instead of a generic "no edit" notice.
+    local response = client.request_sync("workspace/executeCommand", {
+      command = "lex.extractToInclude",
+      arguments = { uri, range, src },
+    }, 5000, 0)
+    if response and response.err then
+      vim.notify(response.err.message or "Extract failed", vim.log.levels.ERROR)
+      return
+    end
+    local edit = response and response.result
+    if not edit then
+      vim.notify("Extract returned no edit", vim.log.levels.ERROR)
+      return
+    end
+    if apply_workspace_edit(edit) then
+      vim.notify("Selection extracted to " .. src, vim.log.levels.INFO)
+    else
+      vim.notify("Failed to apply extract edit", vim.log.levels.ERROR)
+    end
+  end)
+end
+
 -- File picker with Telescope fallback to vim.ui.input
 local function pick_file(opts, callback)
   opts = opts or {}
@@ -541,6 +603,12 @@ function M.setup()
   })
   vim.api.nvim_create_user_command("LexFormatTable", M.format_table, {
     desc = "Format table at cursor",
+  })
+
+  -- Extract-to-include (visual selection required)
+  vim.api.nvim_create_user_command("LexExtractToInclude", M.extract_to_include, {
+    range = true,
+    desc = "Extract the visual selection into a new include file",
   })
 end
 
