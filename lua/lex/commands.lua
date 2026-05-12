@@ -128,30 +128,101 @@ function M.toggle_annotations()
   end
 end
 
--- Get the current visual selection as an LSP Range (0-indexed, end-exclusive).
--- Returns nil when called outside visual mode (no selection).
-local function get_visual_selection_range()
-  -- '< and '> are the marks left by the last visual selection. After the user
-  -- triggers a command from visual mode they're already set; in operator-pending
-  -- modes they're stale, so we resolve them here rather than reading vim.fn.mode().
+-- Get an LSP Range from the command's range arguments.
+--
+-- `opts` is the table nvim passes to a `range = true` user command. We use
+-- `opts.range > 0` as the gate: visual-mode invocations get `'<,'>` filled
+-- in automatically (range == 2), and explicit `:N,M` ranges set range == 2;
+-- normal-mode invocations without a range get range == 0 and we refuse them
+-- so we don't operate on stale `'<`/`'>` marks left from a prior visual
+-- selection.
+--
+-- `'<`/`'>` marks set columns to `v:maxcol` (2147483647) for linewise
+-- selections. Adding 1 to that overflows and lexd-lsp's range validator
+-- rejects it; clamp to the actual byte length of the end line instead.
+local function get_visual_selection_range(opts)
+  if not opts or (opts.range or 0) == 0 then
+    return nil
+  end
   local start_pos = vim.api.nvim_buf_get_mark(0, "<")
   local end_pos = vim.api.nvim_buf_get_mark(0, ">")
   if start_pos[1] == 0 or end_pos[1] == 0 then
     return nil
   end
-  -- Marks are (1-indexed line, 0-indexed col). LSP wants 0-indexed for both,
-  -- and "end" is exclusive — visual marks are inclusive, so we step past the
-  -- selected end character. UTF-8 byte offsets match lexd-lsp's column convention.
+  local end_line_idx = end_pos[1] -- 1-indexed
+  local end_line = vim.api.nvim_buf_get_lines(0, end_line_idx - 1, end_line_idx, false)[1] or ""
+  local end_col = end_pos[2]
+  if end_col >= #end_line then
+    -- Linewise visual selection (`v:maxcol`) or otherwise end-of-line:
+    -- snap to the actual line length so the LSP end-exclusive range
+    -- covers the whole final line without overflowing.
+    end_col = #end_line
+  else
+    -- Marks are inclusive; LSP `Range.end` is exclusive — step past the
+    -- selected end character. UTF-8 byte offsets match lexd-lsp's column
+    -- convention.
+    end_col = end_col + 1
+  end
   return {
     start = { line = start_pos[1] - 1, character = start_pos[2] },
-    ["end"] = { line = end_pos[1] - 1, character = end_pos[2] + 1 },
+    ["end"] = { line = end_line_idx - 1, character = end_col },
   }
 end
 
-function M.extract_to_include()
-  local range = get_visual_selection_range()
+-- Apply an extract-to-include WorkspaceEdit.
+--
+-- `vim.lsp.util.apply_workspace_edit` silently no-ops the
+-- `TextDocumentEdit` targeted at a freshly-`CreateFile`'d URI (the buffer
+-- isn't loaded, so the edit has nowhere to land — same gotcha vscode's
+-- `applyEdit` has). Walk the edit by hand: write each `CreateFile`
+-- target's content via `vim.fn.writefile`, then hand the remaining
+-- host-side edits to the standard apply path.
+local function apply_extract_workspace_edit(edit, client)
+  if not edit then return false end
+  local ops = edit.documentChanges or {}
+  local created_uris = {}
+  for _, op in ipairs(ops) do
+    if op.kind == "create" then
+      created_uris[op.uri] = true
+    end
+  end
+  for _, op in ipairs(ops) do
+    if op.textDocument and created_uris[op.textDocument.uri] then
+      local target_path = vim.uri_to_fname(op.textDocument.uri)
+      local content = table.concat(
+        vim.tbl_map(function(e) return e.newText or "" end, op.edits or {}),
+        ""
+      )
+      local lines = vim.split(content, "\n", { plain = true })
+      -- vim.fn.writefile takes a list of lines without trailing newlines;
+      -- a trailing empty string in `lines` produces a final newline.
+      vim.fn.writefile(lines, target_path)
+    end
+  end
+  -- Build a filtered edit with just the host-targeted text edits.
+  local remaining = {}
+  for _, op in ipairs(ops) do
+    if op.kind ~= "create"
+      and op.textDocument
+      and not created_uris[op.textDocument.uri]
+    then
+      table.insert(remaining, op)
+    end
+  end
+  if #remaining > 0 then
+    local filtered = vim.tbl_extend("force", edit, { documentChanges = remaining })
+    vim.lsp.util.apply_workspace_edit(filtered, client.offset_encoding or "utf-16")
+  end
+  return true
+end
+
+function M.extract_to_include(opts)
+  local range = get_visual_selection_range(opts)
   if not range then
-    vim.notify("Make a visual selection before running LexExtractToInclude", vim.log.levels.ERROR)
+    vim.notify(
+      "LexExtractToInclude requires a visual selection (use :'<,'>LexExtractToInclude or run from visual mode)",
+      vim.log.levels.ERROR
+    )
     return
   end
 
@@ -182,7 +253,7 @@ function M.extract_to_include()
       vim.notify("Extract returned no edit", vim.log.levels.ERROR)
       return
     end
-    if apply_workspace_edit(edit) then
+    if apply_extract_workspace_edit(edit, client) then
       vim.notify("Selection extracted to " .. src, vim.log.levels.INFO)
     else
       vim.notify("Failed to apply extract edit", vim.log.levels.ERROR)
