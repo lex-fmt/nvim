@@ -19,7 +19,7 @@ local M = {}
 
 -- Plugin version. Bump alongside the git tag in scripts/create-release.
 -- (Not the LSP version — that's M.lex_lsp_version, read from shared/lex-deps.json below.)
-M.version = "0.9.0"
+M.version = "0.10.0"
 
 -- Get the plugin root directory
 local function get_plugin_root()
