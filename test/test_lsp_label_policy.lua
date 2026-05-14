@@ -110,12 +110,11 @@ end
 vim.cmd("edit " .. tmp)
 
 local function wait_for(predicate, timeout_ms)
-  local started = vim.loop.hrtime()
-  while (vim.loop.hrtime() - started) / 1e6 < timeout_ms do
-    if predicate() then return true end
-    vim.cmd("sleep 50m")
-  end
-  return false
+  -- `vim.wait` polls `predicate` while continuing to process the event loop,
+  -- which is exactly what we want for LSP callbacks (publishDiagnostics,
+  -- textDocument/codeAction responses, etc.). The manual hrtime + `:sleep`
+  -- loop blocks event processing inside each tick and is slower besides.
+  return vim.wait(timeout_ms, predicate, 50)
 end
 
 if not wait_for(function() return lsp_attached end, 5000) then
@@ -187,23 +186,26 @@ for _, d in ipairs(diagnostics) do
 end
 assert(doc_table_diag, "doc.table diagnostic should be present")
 
+local doc_table_lsp_range = {
+  start = { line = doc_table_diag.lnum, character = doc_table_diag.col },
+  ["end"] = {
+    line = doc_table_diag.end_lnum or doc_table_diag.lnum,
+    character = doc_table_diag.end_col or 0,
+  },
+}
 local code_action_params = {
   textDocument = { uri = vim.uri_from_bufnr(bufnr) },
-  range = {
-    start = { line = doc_table_diag.lnum, character = doc_table_diag.col },
-    ["end"] = { line = doc_table_diag.end_lnum or doc_table_diag.lnum, character = doc_table_diag.end_col or 0 },
-  },
+  range = doc_table_lsp_range,
   context = {
-    diagnostics = { vim.diagnostic.get(bufnr)[1] and {
-      range = {
-        start = { line = doc_table_diag.lnum, character = doc_table_diag.col },
-        ["end"] = { line = doc_table_diag.end_lnum or doc_table_diag.lnum, character = doc_table_diag.end_col or 0 },
+    diagnostics = {
+      {
+        range = doc_table_lsp_range,
+        severity = doc_table_diag.severity,
+        code = doc_table_diag.code,
+        message = doc_table_diag.message,
+        source = doc_table_diag.source,
       },
-      severity = doc_table_diag.severity,
-      code = doc_table_diag.code,
-      message = doc_table_diag.message,
-      source = doc_table_diag.source,
-    } or {} },
+    },
     only = { "quickfix" },
   },
 }
@@ -238,9 +240,12 @@ end
 
 -- Apply the action: prefer the inline edit (the canonical form for
 -- label-policy quickfixes), fall back to command exec if the LSP
--- modelled it that way.
+-- modelled it that way. Encoding comes from the live client so the
+-- edit lands at the right byte offset for non-ASCII content.
 if rewrite_action.edit then
-  vim.lsp.util.apply_workspace_edit(rewrite_action.edit, "utf-8")
+  local client = vim.lsp.get_client_by_id(lsp_client_id)
+  local offset_encoding = (client and client.offset_encoding) or "utf-16"
+  vim.lsp.util.apply_workspace_edit(rewrite_action.edit, offset_encoding)
 elseif rewrite_action.command then
   vim.lsp.buf.execute_command(rewrite_action.command)
 else
@@ -257,6 +262,20 @@ end
 -- Revert so the rest of the sub-checks see the original fixture.
 vim.cmd("edit! " .. tmp)
 bufnr = vim.api.nvim_get_current_buf()
+
+-- Wait for the LSP to re-attach to the freshly reloaded buffer before
+-- firing hover / completion requests. Filetype-based auto-attach is
+-- usually immediate but not guaranteed instantaneous, and a
+-- `buf_request_sync` against an un-attached buffer returns nil — that
+-- would surface downstream as a confusing "hover did not include …"
+-- failure instead of the real attach-timing issue.
+if not wait_for(function()
+  return #vim.lsp.get_clients({ bufnr = bufnr }) > 0
+end, 5000) then
+  print("TEST_FAILED: LSP did not re-attach to reloaded buffer within 5s")
+  vim.cmd("cquit 1")
+end
+
 -- Re-wait for diagnostics on the reloaded buffer so the hover/completion
 -- checks below run against a settled LSP view.
 if not wait_for(function()
@@ -329,9 +348,6 @@ end
 local last_line = vim.api.nvim_buf_line_count(bufnr)
 vim.api.nvim_buf_set_lines(bufnr, last_line, last_line, false, { "", ":: " })
 
--- Wait for the LSP to register the change.
-vim.cmd("sleep 500m")
-
 -- Trigger position: line is now last_line + 1 (0-indexed: last_line), col 3 (just after `:: `).
 local trigger_line = last_line + 1
 local completion_params = {
@@ -339,17 +355,37 @@ local completion_params = {
   position = { line = trigger_line, character = 3 },
   context = { triggerKind = 2, triggerCharacter = " " },
 }
-local completion_results = vim.lsp.buf_request_sync(bufnr, "textDocument/completion", completion_params, 5000)
 
+-- Poll the completion request until the server's view includes the
+-- new `:: ` line and the verbatim-label completions come back.
+-- A naive `:sleep 500m` masks the actual signal we want (the server
+-- has caught up) and produces flaky tests on slower runners.
 local labels = {}
-for _, response in pairs(completion_results or {}) do
-  local result = response.result
-  if result then
-    local items = result.items or result
-    for _, item in ipairs(items) do
-      table.insert(labels, item.label or item.insertText or "")
+local got_completions = wait_for(function()
+  labels = {}
+  local results = vim.lsp.buf_request_sync(bufnr, "textDocument/completion", completion_params, 1000)
+  for _, response in pairs(results or {}) do
+    local result = response.result
+    if result then
+      local items = result.items or result
+      for _, item in ipairs(items) do
+        table.insert(labels, item.label or item.insertText or "")
+      end
     end
   end
+  -- `table` is a member of STANDARD_VERBATIM_LABELS — its presence
+  -- is the signal that we're in the verbatim-opener completion path
+  -- (vs. the reference path returned for unmatched cursor contexts).
+  for _, l in ipairs(labels) do
+    if l == "table" then return true end
+  end
+  return false
+end, 5000)
+
+if not got_completions then
+  print("TEST_FAILED: did not receive verbatim-label completions within 5s; got: " ..
+        table.concat(labels, ", "))
+  vim.cmd("cquit 1")
 end
 
 local function has(label)
