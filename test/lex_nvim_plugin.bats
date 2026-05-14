@@ -128,6 +128,12 @@ setup() {
     [[ "$output" =~ "TEST_PASSED" ]]
 }
 
+@test "Label-policy LSP surface (diagnostics + quickfix + hover + completion)" {
+    run nvim --headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/test_lsp_label_policy.lua"
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ "TEST_PASSED" ]]
+}
+
 @test "LSP range formatting" {
     run nvim --headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/test_lsp_range_formatting.lua"
     [ "$status" -eq 0 ]
