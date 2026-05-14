@@ -14,10 +14,11 @@
       and `:: lex.unknown ::` (unregistered canonical) now surface via
       `vim.diagnostic` with codes `forbidden-label-prefix` /
       `unknown-lex-canonical`.
-    - **Quickfix code action.** `:CodeAction` on a `doc.*` site offers
-      "Rewrite `doc.table` to `table`" / `doc.image` → `image` etc.
-      for the four curated mappings, plus a generic "strip `doc.`
-      prefix" fallback.
+    - **Quickfix code action.** Code actions
+      (`vim.lsp.buf.code_action()`) on a `doc.*` site offer "Rewrite
+      `doc.table` to `table`" / `doc.image` → `image` etc. for the
+      four curated mappings, plus a generic "strip `doc.` prefix"
+      fallback.
     - **Hover form-classification.** Hovering a label site shows
       "Shortcut for `lex.metadata.author`" / "Prefix-stripped form of
       `lex.metadata.author`" / "Community label" depending on the
@@ -27,7 +28,7 @@
       offending label gets a diagnostic in place and other features
       keep working.
 - Bumps `comms` submodule to `2238b40`. **Required** for the lex v0.13.0
-  bump: PR #43 flipped benchmark fixtures off `doc.note` →
+  bump: comms#43 flipped benchmark fixtures off `doc.note` →
   `test.note`, and nvim's LSP tests load those fixtures via
   `test/test_lsp_*.lua`. Without the bump, strict `NormalizeLabels` in
   v0.13.0 rejects the fixtures at parse time.
