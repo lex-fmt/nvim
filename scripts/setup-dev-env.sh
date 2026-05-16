@@ -61,22 +61,39 @@ if [ -f shared/lex-deps.json ] && command -v jq >/dev/null 2>&1; then
   fi
 
   # lexd-lsp binary at the pinned version. Tests pick it up via
-  # vim.fn.exepath("lexd-lsp"), so installing to /usr/local/bin avoids
-  # needing LEX_LSP_PATH in the session. Stamp file gates re-downloads
-  # since lexd-lsp has no --version flag.
+  # vim.fn.exepath("lexd-lsp"), so install to a directory on PATH —
+  # /usr/local/bin in the cloud session (runs as root), ~/.local/bin as
+  # a fallback for re-runs in unprivileged environments. Stamp file
+  # gates re-downloads since lexd-lsp has no --version flag.
   LSP_VERSION=$(jq -r '.["lexd-lsp"]' shared/lex-deps.json)
   LSP_REPO=$(jq -r '.["lexd-lsp-repo"]' shared/lex-deps.json)
-  LSP_INSTALL=/usr/local/bin/lexd-lsp
-  LSP_STAMP=/usr/local/bin/.lexd-lsp.version
-  if [ -n "${LSP_VERSION}" ] && [ "${LSP_VERSION}" != "null" ] && \
+
+  # Upstream lexd-lsp only ships x86_64-unknown-linux-gnu today; detect
+  # arch so a future arm64 cloud-env image fails with a clear message
+  # rather than a 404.
+  case "$(uname -m)" in
+    x86_64|amd64) LSP_ARCH=x86_64-unknown-linux-gnu ;;
+    *) LSP_ARCH=""; echo "warning: lexd-lsp not available for $(uname -m); skipping" >&2 ;;
+  esac
+
+  if [ -w /usr/local/bin ]; then
+    LSP_INSTALL_DIR=/usr/local/bin
+  else
+    LSP_INSTALL_DIR="${HOME}/.local/bin"
+    mkdir -p "${LSP_INSTALL_DIR}"
+  fi
+  LSP_INSTALL="${LSP_INSTALL_DIR}/lexd-lsp"
+  LSP_STAMP="${LSP_INSTALL_DIR}/.lexd-lsp.version"
+
+  if [ -n "${LSP_ARCH}" ] && [ -n "${LSP_VERSION}" ] && [ "${LSP_VERSION}" != "null" ] && \
      [ "$(cat "${LSP_STAMP}" 2>/dev/null)" != "${LSP_VERSION}" ]; then
     LSP_TMP=$(mktemp -d)
-    if curl -fsSL "https://github.com/${LSP_REPO}/releases/download/${LSP_VERSION}/lexd-lsp-x86_64-unknown-linux-gnu.tar.gz" \
-         -o "${LSP_TMP}/lsp.tgz" 2>/dev/null && \
-       tar -xzf "${LSP_TMP}/lsp.tgz" -C "${LSP_TMP}" 2>/dev/null; then
+    if curl -fsSL "https://github.com/${LSP_REPO}/releases/download/${LSP_VERSION}/lexd-lsp-${LSP_ARCH}.tar.gz" \
+         -o "${LSP_TMP}/lsp.tgz" && \
+       tar -xzf "${LSP_TMP}/lsp.tgz" -C "${LSP_TMP}"; then
       BIN=$(find "${LSP_TMP}" -name lexd-lsp -type f | head -1)
-      if [ -n "${BIN}" ] && install -m 0755 "${BIN}" "${LSP_INSTALL}" 2>/dev/null; then
-        echo "${LSP_VERSION}" > "${LSP_STAMP}" 2>/dev/null || true
+      if [ -n "${BIN}" ] && install -m 0755 "${BIN}" "${LSP_INSTALL}"; then
+        echo "${LSP_VERSION}" > "${LSP_STAMP}" || true
       else
         echo "warning: lexd-lsp install failed — LSP-dependent tests will fail" >&2
       fi
@@ -97,11 +114,11 @@ if [ -f shared/lex-deps.json ] && command -v jq >/dev/null 2>&1; then
      [ "$(cat "${TS_STAMP}" 2>/dev/null)" != "${TS_VERSION}" ]; then
     TS_TMP=$(mktemp -d)
     if curl -fsSL "https://github.com/${TS_REPO}/releases/download/${TS_VERSION}/tree-sitter.tar.gz" \
-         -o "${TS_TMP}/ts.tgz" 2>/dev/null; then
+         -o "${TS_TMP}/ts.tgz"; then
       rm -rf "${TS_DIR}"
       mkdir -p "${TS_DIR}"
-      if tar -xzf "${TS_TMP}/ts.tgz" -C "${TS_DIR}" 2>/dev/null; then
-        echo "${TS_VERSION}" > "${TS_STAMP}" 2>/dev/null || true
+      if tar -xzf "${TS_TMP}/ts.tgz" -C "${TS_DIR}"; then
+        echo "${TS_VERSION}" > "${TS_STAMP}" || true
       fi
     else
       echo "warning: tree-sitter-lex download failed (${TS_REPO}@${TS_VERSION})" >&2
