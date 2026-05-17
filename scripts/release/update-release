@@ -35,6 +35,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
 
+# --- 0. Preflight ---
+#
+# Mirror `scripts/create-release`: require a clean working tree + index so
+# unrelated local edits can't slip into the release commit the caller will
+# make. Also fail-fast on missing `gh` instead of a generic "command not
+# found" from `set -e` deep inside step 3.
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "error: \`gh\` (GitHub CLI) is required but not on PATH" >&2
+  exit 1
+fi
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "error: working tree is not clean (commit or stash before running)" >&2
+  exit 1
+fi
+
 # --- 1. Bump M.version in lua/lex/init.lua ---
 
 INIT_LUA="$REPO_ROOT/lua/lex/init.lua"
@@ -53,13 +70,19 @@ fi
 git add "$INIT_LUA"
 
 # --- 2. Bump comms submodule to origin/main ---
+#
+# The submodule is declared in .gitmodules; require it to be initialized as
+# a real git work tree so we fail with a clear actionable message instead of
+# a confusing `fatal: not a git repository` from inside `git fetch`.
 
-if [[ -d "$REPO_ROOT/comms" ]]; then
-  (cd "$REPO_ROOT/comms" && git fetch origin && git checkout origin/main)
-  git add comms
-else
-  echo "warning: comms submodule directory missing; skipping" >&2
+COMMS_DIR="$REPO_ROOT/comms"
+if [[ ! -d "$COMMS_DIR/.git" ]] && [[ ! -f "$COMMS_DIR/.git" ]]; then
+  echo "error: comms submodule is not initialized at $COMMS_DIR" >&2
+  echo "       run \`git submodule update --init comms\` first" >&2
+  exit 1
 fi
+(cd "$COMMS_DIR" && git fetch origin && git checkout origin/main)
+git add comms
 
 # --- 3. Refresh shared/lex-deps.json from upstream releases ---
 
@@ -106,28 +129,38 @@ fi
 # Strip HTML comment lines, then trim leading + trailing blank lines.
 NOTES=$(grep -v '^<!--.*-->$' "$UNRELEASED" | sed -e '/./,$!d' -e :a -e '/^\n*$/{$d;N;ba' -e '}')
 
-if [[ -n "$NOTES" ]]; then
-  DATE=$(date +%Y-%m-%d)
-  ENTRY="## v$NEW_VERSION ($DATE)
+# Empty notes is a hard error to match `scripts/create-release`'s contract —
+# silently shipping a release with no changelog entry is a footgun.
+if [[ -z "$NOTES" ]]; then
+  echo "error: UNRELEASED.md has no release notes" >&2
+  exit 1
+fi
+
+DATE=$(date +%Y-%m-%d)
+ENTRY="## v$NEW_VERSION ($DATE)
 
 $NOTES"
 
-  if [[ -f "$CHANGELOG" ]]; then
-    TAIL=$(tail -n +2 "$CHANGELOG")
-    printf '%s\n\n%s\n%s\n' "# Changelog" "$ENTRY" "$TAIL" > "$CHANGELOG"
-  else
-    printf '%s\n\n%s\n' "# Changelog" "$ENTRY" > "$CHANGELOG"
-  fi
+# Stream the new header + entry + existing tail into a temp file rather than
+# slurping the entire CHANGELOG into a shell variable — this stays safe for
+# arbitrarily large changelogs and avoids any ARG_MAX cliff.
+TMP_CHANGELOG="$CHANGELOG.tmp"
+if [[ -f "$CHANGELOG" ]]; then
+  {
+    printf '# Changelog\n\n%s\n' "$ENTRY"
+    tail -n +2 "$CHANGELOG"
+  } > "$TMP_CHANGELOG"
+else
+  printf '# Changelog\n\n%s\n' "$ENTRY" > "$TMP_CHANGELOG"
+fi
+mv "$TMP_CHANGELOG" "$CHANGELOG"
 
-  cat > "$UNRELEASED" <<'TEMPLATE'
+cat > "$UNRELEASED" <<'TEMPLATE'
 <!-- Release notes for the next version. -->
 <!-- Updated as work is done; consumed by scripts/create-release. -->
 TEMPLATE
 
-  git add "$CHANGELOG" "$UNRELEASED"
-else
-  echo "warning: UNRELEASED.md has no notes; CHANGELOG.md left unchanged" >&2
-fi
+git add "$CHANGELOG" "$UNRELEASED"
 
 echo "update-release: staged changes for v$NEW_VERSION"
 echo "  lexd-lsp pin   = $LEX_LATEST"
