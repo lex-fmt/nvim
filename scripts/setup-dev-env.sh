@@ -154,6 +154,36 @@ if [ -f shared/lex-deps.json ] && command -v jq >/dev/null 2>&1; then
     fi
     rm -rf "${TS_TMP}"
   fi
+
+  # Export LEX_TREESITTER_PATH for the test suite.
+  # test_treesitter / test_injections / test_table_highlighting read
+  # vim.env.LEX_TREESITTER_PATH; without it they print TEST_SKIPPED and
+  # the bats matcher (which requires "TEST_PASSED") flips 3 of 23 tests
+  # to failed. CI sets the var as a job-level env (.github/workflows/
+  # test.yml). Cloud sessions need the equivalent on two layers:
+  #   1. .claude/settings.json `env` — propagates the var into the
+  #      Claude Code Bash tool's non-interactive subshells (which do
+  #      not source ~/.bashrc).
+  #   2. The marker-guarded bashrc append below — for humans who shell
+  #      into the cloud container interactively.
+  # Idempotent: the marker guard means re-runs are no-ops.
+  # Guard on TS_STAMP, not just [ -d "${TS_DIR}" ]: a failed tar leaves
+  # TS_DIR existing but empty (mkdir runs before the extract), and we
+  # don't want to export LEX_TREESITTER_PATH pointing at an invalid tree.
+  # TS_STAMP is only written after a successful extract and persists
+  # across cached re-runs, so it works as a success sentinel either way.
+  if [ -f "${TS_STAMP}" ] && [ -n "${HOME:-}" ] && [ -w "${HOME}" ]; then
+    BASHRC="${HOME}/.bashrc"
+    MARKER="# >>> lex-fmt/nvim setup-dev-env.sh >>>"
+    if ! grep -qF "${MARKER}" "${BASHRC}" 2>/dev/null; then
+      {
+        echo ""
+        echo "${MARKER}"
+        echo "export LEX_TREESITTER_PATH=\"${TS_DIR}\""
+        echo "# <<< lex-fmt/nvim setup-dev-env.sh <<<"
+      } >> "${BASHRC}" || true
+    fi
+  fi
 fi
 
 exit 0
