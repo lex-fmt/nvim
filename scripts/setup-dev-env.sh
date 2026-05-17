@@ -102,7 +102,8 @@ fi
 # until its internal 5s wait expires, then the whole bats suite times
 # out. CI uses `rhysd/action-setup-vim@v1 version: stable`, so do the
 # same here: fetch the official stable tarball and overlay it under
-# /usr/local. Idempotent via a version stamp.
+# /usr/local. Idempotent: subsequent runs short-circuit on the
+# `nvim_version_ok` check against the installed `nvim --version`.
 NVIM_MIN_MAJOR=0
 NVIM_MIN_MINOR=11
 nvim_version_ok() {
@@ -126,14 +127,17 @@ if ! nvim_version_ok; then
          -o "${NVIM_TMP}/nvim.tgz" && \
        tar -xzf "${NVIM_TMP}/nvim.tgz" -C "${NVIM_TMP}"; then
       if [ -w /usr/local ]; then
-        cp -r "${NVIM_TMP}/nvim-${NVIM_ARCH}/." /usr/local/
+        NVIM_COPY=(cp)
       else
-        sudo cp -r "${NVIM_TMP}/nvim-${NVIM_ARCH}/." /usr/local/ || \
-          echo "warning: nvim stable install failed (no write to /usr/local)" >&2
+        NVIM_COPY=(sudo cp)
+      fi
+      if ! "${NVIM_COPY[@]}" -r "${NVIM_TMP}/nvim-${NVIM_ARCH}/." /usr/local/; then
+        echo "warning: nvim stable install failed (could not copy to /usr/local)" >&2
       fi
       hash -r 2>/dev/null || true
     else
-      echo "warning: nvim stable download failed — keeping system nvim $(nvim --version | head -1)" >&2
+      NVIM_CURRENT=$(nvim --version 2>/dev/null | head -1 || echo 'no nvim on PATH')
+      echo "warning: nvim stable download failed — keeping ${NVIM_CURRENT}" >&2
     fi
     rm -rf "${NVIM_TMP}"
   fi
