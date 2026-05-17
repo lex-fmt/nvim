@@ -167,7 +167,12 @@ if [ -f shared/lex-deps.json ] && command -v jq >/dev/null 2>&1; then
   #   2. The marker-guarded bashrc append below — for humans who shell
   #      into the cloud container interactively.
   # Idempotent: the marker guard means re-runs are no-ops.
-  if [ -d "${TS_DIR}" ] && [ -n "${HOME:-}" ] && [ -w "${HOME}" ]; then
+  # Guard on TS_STAMP, not just [ -d "${TS_DIR}" ]: a failed tar leaves
+  # TS_DIR existing but empty (mkdir runs before the extract), and we
+  # don't want to export LEX_TREESITTER_PATH pointing at an invalid tree.
+  # TS_STAMP is only written after a successful extract and persists
+  # across cached re-runs, so it works as a success sentinel either way.
+  if [ -f "${TS_STAMP}" ] && [ -n "${HOME:-}" ] && [ -w "${HOME}" ]; then
     BASHRC="${HOME}/.bashrc"
     MARKER="# >>> lex-fmt/nvim setup-dev-env.sh >>>"
     if ! grep -qF "${MARKER}" "${BASHRC}" 2>/dev/null; then
