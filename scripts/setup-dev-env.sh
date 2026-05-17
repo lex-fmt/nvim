@@ -94,6 +94,70 @@ fi
 # fetches.)
 
 
+# Neovim stable: the cloud image ships nvim 0.9.5 from Ubuntu apt, but
+# the pinned nvim-lspconfig refuses to load on <0.11 ("nvim-lspconfig
+# support for Nvim 0.10 or older is deprecated"). Symptom on the old
+# binary: `lazy.setup` returns immediately, plugins register, but
+# `require("lspconfig")` never succeeds — every LSP-attach test hangs
+# until its internal 5s wait expires, then the whole bats suite times
+# out. CI uses `rhysd/action-setup-vim@v1 version: stable`, so do the
+# same here: fetch the official stable tarball and overlay it under
+# /usr/local. Idempotent via a version stamp.
+NVIM_MIN_MAJOR=0
+NVIM_MIN_MINOR=11
+nvim_version_ok() {
+  command -v nvim >/dev/null 2>&1 || return 1
+  local v major minor
+  v=$(nvim --version | head -1 | sed -E 's/^NVIM v([0-9]+\.[0-9]+).*/\1/')
+  major=${v%%.*}
+  minor=${v##*.}
+  [ "${major}" -gt "${NVIM_MIN_MAJOR}" ] || \
+    { [ "${major}" -eq "${NVIM_MIN_MAJOR}" ] && [ "${minor}" -ge "${NVIM_MIN_MINOR}" ]; }
+}
+if ! nvim_version_ok; then
+  case "$(uname -m)" in
+    x86_64|amd64) NVIM_ARCH=linux-x86_64 ;;
+    aarch64|arm64) NVIM_ARCH=linux-arm64 ;;
+    *) NVIM_ARCH=""; echo "warning: no nvim stable build for $(uname -m); leaving system nvim in place" >&2 ;;
+  esac
+  if [ -n "${NVIM_ARCH}" ]; then
+    NVIM_TMP=$(mktemp -d)
+    if curl -fsSL "https://github.com/neovim/neovim/releases/download/stable/nvim-${NVIM_ARCH}.tar.gz" \
+         -o "${NVIM_TMP}/nvim.tgz" && \
+       tar -xzf "${NVIM_TMP}/nvim.tgz" -C "${NVIM_TMP}"; then
+      if [ -w /usr/local ]; then
+        cp -r "${NVIM_TMP}/nvim-${NVIM_ARCH}/." /usr/local/
+      else
+        sudo cp -r "${NVIM_TMP}/nvim-${NVIM_ARCH}/." /usr/local/ || \
+          echo "warning: nvim stable install failed (no write to /usr/local)" >&2
+      fi
+      hash -r 2>/dev/null || true
+    else
+      echo "warning: nvim stable download failed — keeping system nvim $(nvim --version | head -1)" >&2
+    fi
+    rm -rf "${NVIM_TMP}"
+  fi
+fi
+
+# luacheck: CI lints with `luacheck lua/ || true` after installing via
+# luarocks. The cloud image has luarocks but not luacheck itself, so
+# install it on first run. Cheap (one rock + argparse dep) and idempotent.
+if ! command -v luacheck >/dev/null 2>&1 && command -v luarocks >/dev/null 2>&1; then
+  # --quiet is unreliable here: the cloud egress policy returns 403 on
+  # luarocks.org's manifest URL, luarocks falls back to the moonrocks
+  # mirror and the install succeeds, but `--quiet` propagates the
+  # manifest fetch failure as a non-zero exit. Run without --quiet and
+  # suppress noise via the caller's redirect instead.
+  if [ -w /usr/local ]; then
+    LUAROCKS_CMD=(luarocks)
+  else
+    LUAROCKS_CMD=(sudo luarocks)
+  fi
+  if ! "${LUAROCKS_CMD[@]}" install luacheck >/dev/null 2>&1; then
+    echo 'warning: luacheck install failed — lint will be skipped' >&2
+  fi
+fi
+
 # Nvim plugin (Lex): pinned binary/source fetch.
 # Detection signal is shared/lex-deps.json — the version pin file. The
 # tooling here mirrors what .github/workflows/test.yml does for CI so a
