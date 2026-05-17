@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+# Apply <new-version> (bare, no `v` prefix) across every release-touched file
+# and `git add` each one. The caller is responsible for committing/tagging.
+#
+# Touched files:
+#   - lua/lex/init.lua          (M.version = "X.Y.Z")
+#   - comms/                    (bumped to origin/main)
+#   - shared/lex-deps.json      (lexd-lsp + tree-sitter pins refreshed from
+#                                upstream GitHub releases)
+#   - CHANGELOG.md              (UNRELEASED.md contents prepended as new entry)
+#   - UNRELEASED.md             (reset to empty template)
+#
+# Layer 0 release primitive — see lex-fmt/lex#640.
+
+set -euo pipefail
+
+usage() {
+  echo "Usage: $(basename "$0") <new-version>" >&2
+  echo "  <new-version>  Bare semver, e.g. 0.11.0 (no 'v' prefix)" >&2
+}
+
+if [[ $# -ne 1 ]]; then
+  usage
+  exit 1
+fi
+
+NEW_VERSION="$1"
+
+if [[ ! "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "error: version must match X.Y.Z (got: $NEW_VERSION)" >&2
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$REPO_ROOT"
+
+# --- 0. Preflight ---
+#
+# Mirror `scripts/create-release`: require a clean working tree + index so
+# unrelated local edits can't slip into the release commit the caller will
+# make. Also fail-fast on missing `gh` instead of a generic "command not
+# found" from `set -e` deep inside step 3.
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "error: \`gh\` (GitHub CLI) is required but not on PATH" >&2
+  exit 1
+fi
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "error: working tree is not clean (commit or stash before running)" >&2
+  exit 1
+fi
+
+# --- 1. Bump M.version in lua/lex/init.lua ---
+
+INIT_LUA="$REPO_ROOT/lua/lex/init.lua"
+if [[ ! -f "$INIT_LUA" ]]; then
+  echo "error: $INIT_LUA not found" >&2
+  exit 1
+fi
+
+perl -i -pe 's/(M\.version = ")[^"]+(")/${1}'"$NEW_VERSION"'${2}/' "$INIT_LUA"
+
+if ! grep -qF "M.version = \"$NEW_VERSION\"" "$INIT_LUA"; then
+  echo "error: failed to bump M.version in $INIT_LUA" >&2
+  exit 1
+fi
+
+git add "$INIT_LUA"
+
+# --- 2. Bump comms submodule to origin/main ---
+#
+# The submodule is declared in .gitmodules; require it to be initialized as
+# a real git work tree so we fail with a clear actionable message instead of
+# a confusing `fatal: not a git repository` from inside `git fetch`.
+
+COMMS_DIR="$REPO_ROOT/comms"
+if [[ ! -d "$COMMS_DIR/.git" ]] && [[ ! -f "$COMMS_DIR/.git" ]]; then
+  echo "error: comms submodule is not initialized at $COMMS_DIR" >&2
+  echo "       run \`git submodule update --init comms\` first" >&2
+  exit 1
+fi
+(cd "$COMMS_DIR" && git fetch origin && git checkout origin/main)
+git add comms
+
+# --- 3. Refresh shared/lex-deps.json from upstream releases ---
+
+DEPS_JSON="$REPO_ROOT/shared/lex-deps.json"
+if [[ ! -f "$DEPS_JSON" ]]; then
+  echo "error: $DEPS_JSON not found" >&2
+  exit 1
+fi
+
+LEX_LATEST=$(gh release view --repo lex-fmt/lex --json tagName --jq .tagName)
+TS_LATEST=$(gh release view --repo lex-fmt/tree-sitter-lex --json tagName --jq .tagName)
+
+if [[ -z "$LEX_LATEST" || -z "$TS_LATEST" ]]; then
+  echo "error: failed to resolve upstream release tags (lex=$LEX_LATEST ts=$TS_LATEST)" >&2
+  exit 1
+fi
+
+cat > "$DEPS_JSON" <<EOF
+{
+  "lexd-lsp": "$LEX_LATEST",
+  "lexd-lsp-repo": "lex-fmt/lex",
+  "tree-sitter": "$TS_LATEST",
+  "tree-sitter-repo": "lex-fmt/tree-sitter-lex"
+}
+EOF
+
+git add "$DEPS_JSON"
+
+# --- 4. Fold UNRELEASED.md into CHANGELOG.md ---
+#
+# Convention (matches scripts/create-release): UNRELEASED.md is the staging
+# file; on release we strip its HTML comments, trim blank lines, prepend it as
+# a `## vX.Y.Z (YYYY-MM-DD)` section under the `# Changelog` header, then
+# reset UNRELEASED.md to the empty template.
+
+UNRELEASED="$REPO_ROOT/UNRELEASED.md"
+CHANGELOG="$REPO_ROOT/CHANGELOG.md"
+
+if [[ ! -f "$UNRELEASED" ]]; then
+  echo "error: $UNRELEASED not found" >&2
+  exit 1
+fi
+
+# Strip HTML comment lines, then trim leading + trailing blank lines.
+NOTES=$(grep -v '^<!--.*-->$' "$UNRELEASED" | sed -e '/./,$!d' -e :a -e '/^\n*$/{$d;N;ba' -e '}')
+
+# Empty notes is a hard error to match `scripts/create-release`'s contract —
+# silently shipping a release with no changelog entry is a footgun.
+if [[ -z "$NOTES" ]]; then
+  echo "error: UNRELEASED.md has no release notes" >&2
+  exit 1
+fi
+
+DATE=$(date +%Y-%m-%d)
+ENTRY="## v$NEW_VERSION ($DATE)
+
+$NOTES"
+
+# Stream the new header + entry + existing tail into a temp file rather than
+# slurping the entire CHANGELOG into a shell variable — this stays safe for
+# arbitrarily large changelogs and avoids any ARG_MAX cliff.
+TMP_CHANGELOG="$CHANGELOG.tmp"
+if [[ -f "$CHANGELOG" ]]; then
+  {
+    printf '# Changelog\n\n%s\n' "$ENTRY"
+    tail -n +2 "$CHANGELOG"
+  } > "$TMP_CHANGELOG"
+else
+  printf '# Changelog\n\n%s\n' "$ENTRY" > "$TMP_CHANGELOG"
+fi
+mv "$TMP_CHANGELOG" "$CHANGELOG"
+
+cat > "$UNRELEASED" <<'TEMPLATE'
+<!-- Release notes for the next version. -->
+<!-- Updated as work is done; consumed by scripts/create-release. -->
+TEMPLATE
+
+git add "$CHANGELOG" "$UNRELEASED"
+
+echo "update-release: staged changes for v$NEW_VERSION"
+echo "  lexd-lsp pin   = $LEX_LATEST"
+echo "  tree-sitter pin = $TS_LATEST"
