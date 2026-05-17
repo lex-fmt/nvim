@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Print commits since the most-recent `vX.Y.Z` tag in `<short-sha> <subject>`
+# format, one per line. Empty stdout means no commits since the last release.
+#
+# Layer 0 release primitive — see lex-fmt/lex#640.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$REPO_ROOT"
+
+# Find the most-recent `vX.Y.Z` tag that is an ancestor of HEAD. Using
+# `git describe --abbrev=0` (closest reachable tag) instead of `git tag --sort`
+# avoids picking up off-branch test/scratch tags (e.g. `v100.0.0`).
+LATEST_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null || true)
+
+if [[ -z "$LATEST_TAG" ]]; then
+  # No prior release tag — list every commit on HEAD.
+  git log --pretty=format:'%h %s' HEAD
+  # Ensure trailing newline if any output was produced.
+  if [[ -n "$(git log --pretty=format:'%h' HEAD | head -1)" ]]; then
+    printf '\n'
+  fi
+  exit 0
+fi
+
+git log --pretty=format:'%h %s' "${LATEST_TAG}..HEAD"
+# `git log --pretty=format:` omits the trailing newline; add one if non-empty.
+if [[ -n "$(git log --pretty=format:'%h' "${LATEST_TAG}..HEAD" | head -1)" ]]; then
+  printf '\n'
+fi
