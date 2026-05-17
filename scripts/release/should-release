@@ -2,8 +2,8 @@
 # should-release — Layer 0 release primitive (lex-fmt/lex#640).
 #
 # Decides whether nvim needs a new release by OR'ing four checks. Exits 0
-# with "yes: <reason>" on the first hit; exits 1 with "no: ..." if all
-# clean; exits 2 on hard error.
+# with "yes: <reason>" on the first hit; exits 1 with "no: <reason>" if
+# all clean; exits 2 with "error: <reason>" on stderr on hard error.
 #
 # nvim has both a comms submodule AND two pinned upstream artifacts
 # (lex-lsp binary + tree-sitter grammar tarball), so we layer two
@@ -24,13 +24,28 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
 
+# Hard errors surface as exit 2 with a brief reason on stderr — silent
+# fall-throughs (e.g. swallowing a gh auth/network/rate-limit failure with
+# `|| echo ""`) would hide tooling bugs and produce false "no, nothing to
+# release" answers that a release pipeline would happily act on.
+die() {
+  echo "error: $*" >&2
+  exit 2
+}
+
+# Required external tools. Fail fast with a useful message rather than
+# letting downstream calls produce cryptic errors.
+command -v gh >/dev/null 2>&1 || die "missing required tool: gh"
+command -v jq >/dev/null 2>&1 || die "missing required tool: jq"
+
 # ----------------------------------------------------------------------
 # Check 1: own commits since latest vX.Y.Z tag.
 # ----------------------------------------------------------------------
-# Delegate to the sibling primitive — empty stdout means no new commits.
-# `|| true` so a non-zero from git inside the sibling doesn't kill us
-# under `set -e`; the sibling already normalizes the no-tag case.
-commits="$("$SCRIPT_DIR/get-commits-since-release" || true)"
+# Reuse the sibling primitive — empty stdout means no new commits. Any
+# non-zero exit from it is a tooling failure (bad git state, etc.) and we
+# surface it as a hard error rather than treating it as "no commits".
+commits="$("$SCRIPT_DIR/get-commits-since-release")" \
+  || die "get-commits-since-release failed"
 if [[ -n "$commits" ]]; then
   count="$(printf '%s\n' "$commits" | grep -c .)"
   echo "yes: $count commit(s) in this repo since latest release"
@@ -40,52 +55,65 @@ fi
 # ----------------------------------------------------------------------
 # Check 2: comms submodule stale relative to comms's latest release.
 # ----------------------------------------------------------------------
-# `git ls-tree HEAD comms` reads the *committed* gitlink SHA (not the
-# working-tree state), so this reflects exactly what would ship on a
-# release cut.
-if [[ -d comms ]]; then
-  current_sub="$(git ls-tree HEAD comms 2>/dev/null | awk '{print $3}')"
-  if [[ -n "$current_sub" ]]; then
-    latest_comms_tag="$(gh release view --repo lex-fmt/comms --json tagName --jq .tagName 2>/dev/null || echo "")"
-    if [[ -n "$latest_comms_tag" ]]; then
-      # `gh api .../commits/<ref>` resolves any ref (including annotated
-      # tags, which point at a tag object rather than a commit) down to
-      # the underlying commit SHA so we can compare apples to apples.
-      latest_sha="$(gh api "repos/lex-fmt/comms/commits/$latest_comms_tag" --jq .sha 2>/dev/null || echo "")"
-      if [[ -n "$latest_sha" && "$current_sub" != "$latest_sha" ]]; then
-        echo "yes: comms submodule outdated (${current_sub:0:7} -> ${latest_sha:0:7} = $latest_comms_tag)"
-        exit 0
-      fi
-    fi
+# `git ls-tree HEAD comms` reads from the *committed* tree (not the
+# working tree, not the checked-out submodule HEAD) so this reflects what
+# would actually ship on a release cut. Empty output → submodule isn't
+# recorded at HEAD, which is a legitimate "no submodule to check" rather
+# than an error. We deliberately do NOT gate on `[[ -d comms ]]`: in CI
+# the submodule may not be checked out, but the committed gitlink still
+# governs what would ship.
+ls_tree_out="$(git ls-tree HEAD comms)" || die "git ls-tree HEAD comms failed"
+current_sub="$(printf '%s' "$ls_tree_out" | awk '{print $3}')"
+if [[ -n "$current_sub" ]]; then
+  # `gh release view` / `gh api` failures (auth, network, rate limit,
+  # missing release) are propagated as hard errors so the release
+  # pipeline doesn't silently green-light when GitHub is unreachable.
+  latest_comms_tag="$(gh release view --repo lex-fmt/comms --json tagName --jq .tagName)" \
+    || die "gh release view lex-fmt/comms failed"
+  # `gh api .../commits/<ref>` resolves any ref (including annotated
+  # tags, which point at a tag object rather than the commit) down to
+  # the underlying commit SHA so we can compare apples to apples.
+  latest_sha="$(gh api "repos/lex-fmt/comms/commits/$latest_comms_tag" --jq .sha)" \
+    || die "gh api commits/$latest_comms_tag failed"
+  if [[ "$current_sub" != "$latest_sha" ]]; then
+    echo "yes: comms submodule outdated (${current_sub:0:7} -> ${latest_sha:0:7} = $latest_comms_tag)"
+    exit 0
   fi
 fi
 
 # ----------------------------------------------------------------------
-# Check 3: lexd-lsp pin stale vs lex-fmt/lex latest release.
+# Checks 3 + 4: upstream pin staleness from shared/lex-deps.json.
 # ----------------------------------------------------------------------
-# nvim uses the FLAT shared/lex-deps.json schema (same as vscode):
-#   { "lexd-lsp": "vX.Y.Z", "lexd-lsp-repo": "lex-fmt/lex", ... }
+# Both checks read the same file with the FLAT schema:
+#   { "lexd-lsp": "vX.Y.Z", "lexd-lsp-repo": "lex-fmt/lex",
+#     "tree-sitter": "vA.B.C", "tree-sitter-repo": "lex-fmt/tree-sitter-lex" }
+# A missing file is a legitimate "no pins to check" — but malformed JSON
+# or a `gh` failure is a hard error (no stderr suppression, no fallback
+# strings that mask transient outages as "up-to-date").
 if [[ -f shared/lex-deps.json ]]; then
-  pinned_lsp="$(jq -r '."lexd-lsp" // empty' shared/lex-deps.json 2>/dev/null || echo "")"
-  lsp_repo="$(jq -r '."lexd-lsp-repo" // "lex-fmt/lex"' shared/lex-deps.json 2>/dev/null || echo "lex-fmt/lex")"
+  # Check 3: lexd-lsp pin.
+  pinned_lsp="$(jq -r '."lexd-lsp" // empty' shared/lex-deps.json)" \
+    || die "jq failed to read lexd-lsp pin"
+  lsp_repo="$(jq -r '."lexd-lsp-repo" // "lex-fmt/lex"' shared/lex-deps.json)" \
+    || die "jq failed to read lexd-lsp-repo"
   if [[ -n "$pinned_lsp" ]]; then
-    latest_lsp="$(gh release view --repo "$lsp_repo" --json tagName --jq .tagName 2>/dev/null || echo "")"
-    if [[ -n "$latest_lsp" && "$pinned_lsp" != "$latest_lsp" ]]; then
+    latest_lsp="$(gh release view --repo "$lsp_repo" --json tagName --jq .tagName)" \
+      || die "gh release view $lsp_repo failed"
+    if [[ "$pinned_lsp" != "$latest_lsp" ]]; then
       echo "yes: lexd-lsp pin outdated ($pinned_lsp -> $latest_lsp)"
       exit 0
     fi
   fi
-fi
 
-# ----------------------------------------------------------------------
-# Check 4: tree-sitter pin stale vs lex-fmt/tree-sitter-lex latest release.
-# ----------------------------------------------------------------------
-if [[ -f shared/lex-deps.json ]]; then
-  pinned_ts="$(jq -r '."tree-sitter" // empty' shared/lex-deps.json 2>/dev/null || echo "")"
-  ts_repo="$(jq -r '."tree-sitter-repo" // "lex-fmt/tree-sitter-lex"' shared/lex-deps.json 2>/dev/null || echo "lex-fmt/tree-sitter-lex")"
+  # Check 4: tree-sitter pin.
+  pinned_ts="$(jq -r '."tree-sitter" // empty' shared/lex-deps.json)" \
+    || die "jq failed to read tree-sitter pin"
+  ts_repo="$(jq -r '."tree-sitter-repo" // "lex-fmt/tree-sitter-lex"' shared/lex-deps.json)" \
+    || die "jq failed to read tree-sitter-repo"
   if [[ -n "$pinned_ts" ]]; then
-    latest_ts="$(gh release view --repo "$ts_repo" --json tagName --jq .tagName 2>/dev/null || echo "")"
-    if [[ -n "$latest_ts" && "$pinned_ts" != "$latest_ts" ]]; then
+    latest_ts="$(gh release view --repo "$ts_repo" --json tagName --jq .tagName)" \
+      || die "gh release view $ts_repo failed"
+    if [[ "$pinned_ts" != "$latest_ts" ]]; then
       echo "yes: tree-sitter pin outdated ($pinned_ts -> $latest_ts)"
       exit 0
     fi
