@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# should-release — Layer 0 release primitive (lex-fmt/lex#640).
+#
+# Decides whether nvim needs a new release by OR'ing four checks. Exits 0
+# with "yes: <reason>" on the first hit; exits 1 with "no: ..." if all
+# clean; exits 2 on hard error.
+#
+# nvim has both a comms submodule AND two pinned upstream artifacts
+# (lex-lsp binary + tree-sitter grammar tarball), so we layer two
+# dep-staleness checks on top of the comms + own-commits checks shared
+# with sibling repos.
+#
+# Checks (any one fires → release):
+#   1. Own commits since the latest vX.Y.Z tag.
+#   2. comms submodule SHA != comms's latest release tag → commit SHA.
+#   3. shared/lex-deps.json `lexd-lsp` pin != lex-fmt/lex latest release.
+#   4. shared/lex-deps.json `tree-sitter` pin != lex-fmt/tree-sitter-lex
+#      latest release.
+#
+# No args. Composes with sibling primitives in this directory.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$REPO_ROOT"
+
+# ----------------------------------------------------------------------
+# Check 1: own commits since latest vX.Y.Z tag.
+# ----------------------------------------------------------------------
+# Delegate to the sibling primitive — empty stdout means no new commits.
+# `|| true` so a non-zero from git inside the sibling doesn't kill us
+# under `set -e`; the sibling already normalizes the no-tag case.
+commits="$("$SCRIPT_DIR/get-commits-since-release" || true)"
+if [[ -n "$commits" ]]; then
+  count="$(printf '%s\n' "$commits" | grep -c .)"
+  echo "yes: $count commit(s) in this repo since latest release"
+  exit 0
+fi
+
+# ----------------------------------------------------------------------
+# Check 2: comms submodule stale relative to comms's latest release.
+# ----------------------------------------------------------------------
+# `git ls-tree HEAD comms` reads the *committed* gitlink SHA (not the
+# working-tree state), so this reflects exactly what would ship on a
+# release cut.
+if [[ -d comms ]]; then
+  current_sub="$(git ls-tree HEAD comms 2>/dev/null | awk '{print $3}')"
+  if [[ -n "$current_sub" ]]; then
+    latest_comms_tag="$(gh release view --repo lex-fmt/comms --json tagName --jq .tagName 2>/dev/null || echo "")"
+    if [[ -n "$latest_comms_tag" ]]; then
+      # `gh api .../commits/<ref>` resolves any ref (including annotated
+      # tags, which point at a tag object rather than a commit) down to
+      # the underlying commit SHA so we can compare apples to apples.
+      latest_sha="$(gh api "repos/lex-fmt/comms/commits/$latest_comms_tag" --jq .sha 2>/dev/null || echo "")"
+      if [[ -n "$latest_sha" && "$current_sub" != "$latest_sha" ]]; then
+        echo "yes: comms submodule outdated (${current_sub:0:7} -> ${latest_sha:0:7} = $latest_comms_tag)"
+        exit 0
+      fi
+    fi
+  fi
+fi
+
+# ----------------------------------------------------------------------
+# Check 3: lexd-lsp pin stale vs lex-fmt/lex latest release.
+# ----------------------------------------------------------------------
+# nvim uses the FLAT shared/lex-deps.json schema (same as vscode):
+#   { "lexd-lsp": "vX.Y.Z", "lexd-lsp-repo": "lex-fmt/lex", ... }
+if [[ -f shared/lex-deps.json ]]; then
+  pinned_lsp="$(jq -r '."lexd-lsp" // empty' shared/lex-deps.json 2>/dev/null || echo "")"
+  lsp_repo="$(jq -r '."lexd-lsp-repo" // "lex-fmt/lex"' shared/lex-deps.json 2>/dev/null || echo "lex-fmt/lex")"
+  if [[ -n "$pinned_lsp" ]]; then
+    latest_lsp="$(gh release view --repo "$lsp_repo" --json tagName --jq .tagName 2>/dev/null || echo "")"
+    if [[ -n "$latest_lsp" && "$pinned_lsp" != "$latest_lsp" ]]; then
+      echo "yes: lexd-lsp pin outdated ($pinned_lsp -> $latest_lsp)"
+      exit 0
+    fi
+  fi
+fi
+
+# ----------------------------------------------------------------------
+# Check 4: tree-sitter pin stale vs lex-fmt/tree-sitter-lex latest release.
+# ----------------------------------------------------------------------
+if [[ -f shared/lex-deps.json ]]; then
+  pinned_ts="$(jq -r '."tree-sitter" // empty' shared/lex-deps.json 2>/dev/null || echo "")"
+  ts_repo="$(jq -r '."tree-sitter-repo" // "lex-fmt/tree-sitter-lex"' shared/lex-deps.json 2>/dev/null || echo "lex-fmt/tree-sitter-lex")"
+  if [[ -n "$pinned_ts" ]]; then
+    latest_ts="$(gh release view --repo "$ts_repo" --json tagName --jq .tagName 2>/dev/null || echo "")"
+    if [[ -n "$latest_ts" && "$pinned_ts" != "$latest_ts" ]]; then
+      echo "yes: tree-sitter pin outdated ($pinned_ts -> $latest_ts)"
+      exit 0
+    fi
+  fi
+fi
+
+echo "no: own repo, comms submodule, and upstream pins all up-to-date"
+exit 1
