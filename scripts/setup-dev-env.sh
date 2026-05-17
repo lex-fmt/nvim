@@ -2,16 +2,20 @@
 # scripts/setup-dev-env.sh — per-session dev-environment setup, invoked by
 # the SessionStart hook in .claude/settings.json.
 #
-# Cloud-only: local sessions exit early (devs already have their env set up).
-# Detects stack by filesystem signals — works for rust, node-flavored
-# (npm/yarn/pnpm), ruby (bundle), and nvim/zed/static-site (no project
-# deps, just lefthook wiring). Stack-specific extras (e.g. resource
-# download scripts, submodule init) can be added below the universal
-# section as needed for the particular repo.
+# Source of truth: arthur-debert/release templates/setup-dev-env.sh.
+# Re-sync via the gh-repo-setup skill (or by copying this file verbatim).
+# Repos that need project-specific extras (Xvfb daemon, pinned-binary
+# fetch, extra rustup targets, etc.) append them below the marker at the
+# bottom — anything above it is rsync'd from the template.
+#
+# Cloud-only: local sessions exit early (devs already have their env).
+# Detects stack by filesystem signals — handles rust, node, ruby, python,
+# and consumers with no project deps (just lefthook / hand-rolled hook
+# wiring).
 #
 # Idempotent — safe to re-run. Errors are best-effort: a failure in one
-# step doesn't abort the rest (e.g. transient registry hiccup on cargo
-# fetch shouldn't block the lefthook install).
+# step does not abort the rest (transient registry hiccups shouldn't
+# block the lefthook install).
 
 set -euo pipefail
 
@@ -21,18 +25,29 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "${REPO_ROOT}"
 
-# 1. Project dep cache — pick the right tool based on lockfile / manifest.
+# --- 1. Universal git hygiene --------------------------------------------
+# Cloud clones are shallow; restore submodule content and release tags.
+# Submodule update is a no-op when in sync; tag fetch is one round-trip.
 
-# Rust: cargo fetch with --locked so we don't silently mutate Cargo.lock
-# in the per-session clone. Stale lockfile produces a non-fatal exit;
-# the agent's later cargo build/test surfaces the real issue.
+if [ -f .gitmodules ]; then
+  git submodule update --init --recursive --quiet || true
+fi
+git fetch --tags --quiet origin || true
+
+# --- 2. Project dep cache ------------------------------------------------
+# Pick the right tool based on lockfile / manifest. Per stack, idempotent.
+
+# Rust: cargo fetch with --locked so we don't silently mutate Cargo.lock.
 if [ -f Cargo.toml ] && command -v cargo >/dev/null 2>&1; then
   cargo fetch --locked --quiet || true
 fi
 
-# Node-based (npm / yarn / pnpm). Skip if node_modules already exists
-# (warm from a previous session within the same env-snapshot).
-if [ -f package.json ] && [ ! -d node_modules ]; then
+# Node (npm/yarn/pnpm). We deliberately do NOT guard on `! -d node_modules`:
+# the env-snapshot caches a node_modules paired with a previous branch's
+# lockfile, and a feature branch that bumps the lockfile (Playwright is
+# the canonical case) drifts silently. Re-installing when already in sync
+# is ~2s; chasing a stale lockfile bug is hours. Pay the two seconds.
+if [ -f package.json ]; then
   if [ -f package-lock.json ] && command -v npm >/dev/null 2>&1; then
     npm ci 2>/dev/null || npm install
   elif [ -f yarn.lock ] && command -v yarn >/dev/null 2>&1; then
@@ -47,30 +62,47 @@ if [ -f Gemfile ] && command -v bundle >/dev/null 2>&1; then
   bundle install --quiet || true
 fi
 
-# Nvim plugin (Lex): submodule init + pinned binary/source fetch.
+# Python / pip + venv. Only initialise if .venv missing — pip install is
+# slower than node/cargo and the guard wins more than it costs.
+if [ -f pyproject.toml ] && [ ! -d .venv ] && command -v python3 >/dev/null 2>&1; then
+  python3 -m venv .venv
+  .venv/bin/pip install --upgrade pip --quiet || true
+  .venv/bin/pip install -e '.[dev]' --quiet 2>/dev/null \
+    || .venv/bin/pip install -e . --quiet 2>/dev/null \
+    || true
+fi
+
+# --- 3. Pre-commit hook wiring -------------------------------------------
+# Default: lefthook (binary installed at env-setup time). Fallback for
+# repos that ship a hand-rolled scripts/pre-commit instead (zed-lex,
+# tree-sitter-lex pattern): symlink it into .git/hooks/.
+
+if [ -f lefthook.yml ] && command -v lefthook >/dev/null 2>&1; then
+  if ! lefthook install >/dev/null; then
+    echo "warning: lefthook install failed — pre-commit hook NOT wired" >&2
+  fi
+elif [ -x scripts/pre-commit ]; then
+  mkdir -p .git/hooks
+  ln -sf ../../scripts/pre-commit .git/hooks/pre-commit
+fi
+
+# --- 4. Project-local extras ---------------------------------------------
+# Everything above this marker is the canonical cross-repo setup-dev-env.sh
+# from arthur-debert/release templates/setup-dev-env.sh. Do NOT modify it
+# in-place; consumers append project-specific steps BELOW this marker.
+# (See e.g. lex-fmt/lexed for an Xvfb start, lex-fmt/nvim for pinned-bin
+# fetches.)
+
+
+# Nvim plugin (Lex): pinned binary/source fetch.
 # Detection signal is shared/lex-deps.json — the version pin file. The
 # tooling here mirrors what .github/workflows/test.yml does for CI so a
 # cloud session can `bats test/lex_nvim_plugin.bats` without per-test
 # manual setup (assumes `nvim` itself is provided by the env image).
 if [ -f shared/lex-deps.json ] && command -v jq >/dev/null 2>&1; then
-  # comms submodule holds the canonical theme/policy assets; scripts/gen-theme.py
-  # and several tests read from comms/shared/... — without it both fail.
-  if [ -f .gitmodules ] && [ ! -e comms/README.md ]; then
-    git submodule update --init --recursive --quiet || \
-      echo "warning: comms submodule init failed — gen-theme.py will fail" >&2
-  fi
-
-  # lexd-lsp binary at the pinned version. Tests pick it up via
-  # vim.fn.exepath("lexd-lsp"), so install to a directory on PATH —
-  # /usr/local/bin in the cloud session (runs as root), ~/.local/bin as
-  # a fallback for re-runs in unprivileged environments. Stamp file
-  # gates re-downloads since lexd-lsp has no --version flag.
   LSP_VERSION=$(jq -r '.["lexd-lsp"]' shared/lex-deps.json)
   LSP_REPO=$(jq -r '.["lexd-lsp-repo"]' shared/lex-deps.json)
 
-  # Upstream lexd-lsp only ships x86_64-unknown-linux-gnu today; detect
-  # arch so a future arm64 cloud-env image fails with a clear message
-  # rather than a 404.
   case "$(uname -m)" in
     x86_64|amd64) LSP_ARCH=x86_64-unknown-linux-gnu ;;
     *) LSP_ARCH=""; echo "warning: lexd-lsp not available for $(uname -m); skipping" >&2 ;;
@@ -103,9 +135,6 @@ if [ -f shared/lex-deps.json ] && command -v jq >/dev/null 2>&1; then
     rm -rf "${LSP_TMP}"
   fi
 
-  # tree-sitter-lex source for the (handful of) tests that opt-in via
-  # LEX_TREESITTER_PATH. Land it at /tmp/tree-sitter-lex to match the
-  # CI workflow's path so test invocations look identical to CI.
   TS_VERSION=$(jq -r '.["tree-sitter"]' shared/lex-deps.json)
   TS_REPO=$(jq -r '.["tree-sitter-repo"]' shared/lex-deps.json)
   TS_DIR=/tmp/tree-sitter-lex
@@ -124,16 +153,6 @@ if [ -f shared/lex-deps.json ] && command -v jq >/dev/null 2>&1; then
       echo "warning: tree-sitter-lex download failed (${TS_REPO}@${TS_VERSION})" >&2
     fi
     rm -rf "${TS_TMP}"
-  fi
-fi
-
-# 2. Pre-commit hook wiring (lefthook).
-# Binary is installed at env-setup time (arthur-debert/release env/setup.sh);
-# this just wires .git/hooks/pre-commit to call it. Errors are surfaced
-# loudly — the whole point of the script is the hook install.
-if [ -f lefthook.yml ] && command -v lefthook >/dev/null 2>&1; then
-  if ! lefthook install; then
-    echo "warning: lefthook install failed — pre-commit hook NOT wired" >&2
   fi
 fi
 
