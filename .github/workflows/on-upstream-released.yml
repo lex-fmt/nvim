@@ -5,11 +5,14 @@
 # fires a `repository_dispatch` of type `upstream-released`, this workflow
 # runs the same Layer 0 primitive chain the local orchestrator runs:
 #
-#   should-release  → exits 0 if a release is needed
-#   get-current-version + bump-kind (patch) → new version
+#   should-release                           → exits 0 if a release is needed
+#   get-current-version + inline patch bump  → new version
 #   update-release <new-version>             → bumps manifest + deps + CHANGELOG
 #   commit + PR + admin-merge                → land the bump
 #   trigger-release <new-version>            → fire this repo's own release CI
+#
+# Note: nvim has no separate `bump-kind` primitive — cascades are always
+# patch bumps, computed inline in the "Compute new version" step below.
 #
 # nvim uses a tag-push release model and pins three upstreams via the flat
 # `shared/lex-deps.json` schema (`lexd-lsp` → lex-fmt/lex, `tree-sitter` →
@@ -47,9 +50,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Announce trigger
+        env:
+          # Route `client_payload.*` through env, not direct `${{ … }}`
+          # interpolation in `run`, so an attacker-controlled dispatch
+          # payload can't inject shell into the script.
+          UPSTREAM_SOURCE: ${{ github.event.client_payload.source }}
+          UPSTREAM_VERSION: ${{ github.event.client_payload.version }}
+          UPSTREAM_RUN_URL: ${{ github.event.client_payload.run_url }}
         run: |
-          echo "Triggered by upstream release: ${{ github.event.client_payload.source }}@${{ github.event.client_payload.version }}"
-          echo "Source run: ${{ github.event.client_payload.run_url }}"
+          echo "Triggered by upstream release: $UPSTREAM_SOURCE@$UPSTREAM_VERSION"
+          echo "Source run: $UPSTREAM_RUN_URL"
 
       - name: Checkout main
         uses: actions/checkout@v6
@@ -68,6 +78,11 @@ jobs:
 
       - name: Decide whether to release
         id: decide
+        env:
+          # `should-release` shells out to `gh release view` / `gh api`;
+          # without a token gh exits non-zero and the script's `die` path
+          # treats it as a hard error (exit 2), bailing the handler.
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           set +e
           ./scripts/release/should-release
@@ -102,11 +117,32 @@ jobs:
       - name: Branch + bump + commit
         if: steps.decide.outputs.release == 'yes'
         env:
+          # `update-release` calls `gh release view` to refresh the
+          # lexd-lsp + tree-sitter pins, so it needs an authenticated gh.
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           NEW: ${{ steps.ver.outputs.new }}
+          UPSTREAM_SOURCE: ${{ github.event.client_payload.source }}
+          UPSTREAM_VERSION: ${{ github.event.client_payload.version }}
         run: |
           set -e
           branch="release/v$NEW"
           git checkout -b "$branch"
+          # `update-release` hard-fails when UNRELEASED.md has no
+          # non-comment notes — after a normal release this file is
+          # reset to just comment lines, so a cascade dispatch would
+          # bail out here. Seed a default cascade entry so the bump
+          # proceeds; the entry names the upstream + version that
+          # triggered us. `UPSTREAM_SOURCE`/`UPSTREAM_VERSION` are
+          # routed via env (not `${{ … }}` in the script body) to
+          # avoid command injection from a malicious dispatch payload.
+          {
+            echo "<!-- Release notes for the next version. -->"
+            echo "<!-- Updated as work is done; consumed by scripts/create-release. -->"
+            echo
+            echo "- Cascade release: upstream $UPSTREAM_SOURCE released $UPSTREAM_VERSION."
+          } > UNRELEASED.md
+          git add UNRELEASED.md
+          git commit -m "chore: seed UNRELEASED for cascade"
           ./scripts/release/update-release "$NEW"
           git commit -m "chore: release v$NEW"
           git push -u origin "$branch"
