@@ -157,9 +157,12 @@ if ! command -v luacheck >/dev/null 2>&1 && command -v luarocks >/dev/null 2>&1;
   else
     LUAROCKS_CMD=(sudo luarocks)
   fi
-  if ! "${LUAROCKS_CMD[@]}" install luacheck >/dev/null 2>&1; then
-    echo 'warning: luacheck install failed — lint will be skipped' >&2
+  LUAROCKS_LOG=$(mktemp)
+  if ! "${LUAROCKS_CMD[@]}" install luacheck >"${LUAROCKS_LOG}" 2>&1; then
+    echo 'warning: luacheck install failed — lint will be skipped. luarocks output:' >&2
+    sed 's/^/  /' "${LUAROCKS_LOG}" >&2
   fi
+  rm -f "${LUAROCKS_LOG}"
 fi
 
 # Nvim plugin (Lex): pinned binary/source fetch.
