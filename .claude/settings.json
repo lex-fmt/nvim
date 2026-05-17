@@ -1,4 +1,7 @@
 {
+  "env": {
+    "LEX_TREESITTER_PATH": "/tmp/tree-sitter-lex"
+  },
   "hooks": {
     "SessionStart": [
       {
