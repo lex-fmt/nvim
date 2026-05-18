@@ -24,8 +24,19 @@ jobs:
     uses: arthur-debert/release/.github/workflows/nvim-plugin.yml@v1
     with:
       version: ${{ inputs.version }}
-      # submodules: true — comms/ is a submodule and `## [Unreleased]`
-      # extraction + plugin sanity check both need the full tree.
+      # changelog-path: '' — this repo's CHANGELOG uses lexed-style
+      # `## vX.Y.Z (YYYY-MM-DD)` (not bracketed Keep-a-Changelog).
+      # scripts/release/update-release rolls UNRELEASED.md into
+      # CHANGELOG with that heading style as part of the cascade
+      # flow (on-upstream-released.yml). The reusable workflow's
+      # CHANGELOG awk regex expects strict `## [<v>] - <date>`, so
+      # we disable changelog handling at the workflow level — the
+      # workflow just tags + creates the GH release with default
+      # "Release v<v>" notes. Aligning CHANGELOG format is a
+      # separate follow-up that needs to touch update-release too.
+      changelog-path: ''
+      # submodules: true — comms/ is a submodule and the plugin
+      # sanity check needs the full tree.
       submodules: true
     secrets:
       RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}

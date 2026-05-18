@@ -41,8 +41,12 @@ usage() {
 
 [[ $# -ne 1 ]] && { usage; exit 2; }
 NEW_VERSION="$1"
-if ! [[ "${NEW_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
-  echo "error: version must be X.Y.Z[-PRERELEASE]" >&2
+# Strict SemVer 2.0.0 — dot-separated alphanumeric identifier segments;
+# no leading zeros in numeric segments (except the literal "0"); no
+# empty segments. Build-metadata (`+…`) intentionally not accepted —
+# we don't use it in any release flow.
+if ! [[ "${NEW_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+  echo "error: version must be X.Y.Z[-PRERELEASE] (got: ${NEW_VERSION})" >&2
   exit 2
 fi
 

@@ -1,12 +1,6 @@
 # Changelog
 
-## [Unreleased]
-
-### Changed
-
-- Release pipeline migrated to `arthur-debert/release/.github/workflows/nvim-plugin.yml@v1` (workflow_dispatch trigger, prepare-release-npm-style version handling, GH release with Keep-a-Changelog notes auto-rolled). Trigger contract is now `gh workflow run release.yml`. CHANGELOG.md reformatted from `## vX.Y.Z (YYYY-MM-DD)` to strict Keep-a-Changelog `## [X.Y.Z] - YYYY-MM-DD` so prepare-release-npm can auto-roll release notes.
-
-## [0.10.1] - 2026-05-17
+## v0.10.1 (2026-05-17)
 
 ### Changed
 
@@ -40,7 +34,7 @@
   `test/test_lsp_*.lua`. Without the bump, strict `NormalizeLabels` in
   v0.13.0 rejects the fixtures at parse time.
 
-## [0.10.0] - 2026-05-13
+## v0.10.0 (2026-05-13)
 
 ### Added
 
@@ -78,7 +72,7 @@
   server rejected the range. Now clamps the end column to the
   actual byte length of the end line.
 
-## [0.9.0] - 2026-05-10
+## v0.9.0 (2026-05-10)
 
 ### Added
 
@@ -113,7 +107,7 @@
   wiring this plugin's trust-prompt handler depends on. See lex-fmt/lex
   CHANGELOG `[0.11.0]` for the full surface.
 
-## [0.8.4] - 2026-05-07
+## v0.8.4 (2026-05-07)
 
 ### Changed
 
@@ -135,7 +129,7 @@
   colorscheme assigns to that group, which is the design intent of the
   native mode.
 
-## [0.8.3] - 2026-05-07
+## v0.8.3 (2026-05-07)
 
 ### Changed
 
@@ -146,20 +140,20 @@
   `1. See [./handlers.lex] for details`) now also produce links — the LSP
   was previously dropping them silently.
 
-## [0.8.2] - 2026-05-05
+## v0.8.2 (2026-05-05)
 
 ### Changed
 
 - Bumped `lexd-lsp` pin from v0.10.1 to v0.10.2. Picks up the include-resolver security hardening: `FsLoader` now defends against arbitrary-file-read via symlink path traversal (canonicalizes both the requested path and the resolution root, then verifies the canonical target sits under the canonical root); rejects non-regular files (FIFOs, sockets, devices) before reading; enforces a configurable per-file size cap (default 10 MiB) and total-includes cap (default 1000); rejects platform-absolute include `src` (`C:\foo`, `\\server\share`) up front. Three new diagnostic codes are surfaced: `include-total-exceeded`, `include-file-too-large`, `include-absolute-path`. (lex-fmt/lex#502, #503, #504)
 
-## [0.8.1] - 2026-05-04
+## v0.8.1 (2026-05-04)
 
 ### Changed
 
 - Diagnostics published by `lexd-lsp` now render visibly in the buffer by default — `virtual_text`, `signs`, `underline`, and `severity_sort` are turned on inside `on_attach`. Previously the diagnostics arrived (visible to `:lua print(vim.inspect(vim.diagnostic.get(0)))`) but rendered nothing on screen unless the user had configured `vim.diagnostic.config(...)` themselves. The config is namespace-scoped to `lexd-lsp` so it does not affect other language servers attached to the same nvim. Highlight groups, sign characters, and message formatting are deliberately left to the user's colorscheme — Lex-themed diagnostics (monochrome intensity tiers, custom sign chars) are a separate opt-in design. (#30)
 - Bumped `lexd-lsp` pin from v0.10.0 to v0.10.1. Picks up the fix that points the `include-not-found` diagnostic at the offending `:: lex.include src=… ::` annotation instead of the document head — the squiggle now lands where the user expects it, particularly important in docs with multiple includes. (lex-fmt/lex#500)
 
-## [0.8.0] - 2026-05-04
+## v0.8.0 (2026-05-04)
 
 ### Changed
 
@@ -170,7 +164,7 @@
 
 - CI: handle the new arthur-debert/release@v1 tarball layout (lex v0.10.0+ packages binaries under `<name>-<target>/` instead of at the top level). Locate the binary by name post-extract so this works for both layouts. (#29)
 
-## [0.7.10] - 2026-05-02
+## v0.7.10 (2026-05-02)
 
 ### Changed
 
@@ -179,7 +173,7 @@
 - Bumped `tree-sitter` pin from v0.9.1 to v0.10.1 in `shared/lex-deps.json`. Picks up the embedded-grammars manifest, the new quarterly grammar-bump workflow, and the comms catch-up. Vendored `queries/lex/*.scm` already match the v0.10.1 tarball — no query sync needed.
 - Repo onboarded to the canonical lex-fmt CI standardization: `.github/CODEOWNERS` and `.github/workflows/copilot-review.yml` for auto-trigger Copilot review on PRs. (#25)
 
-## [0.7.9] - 2026-04-26
+## v0.7.9 (2026-04-26)
 
 - Strengthened the tree-sitter injection test to assert all five fixture
   languages (python, javascript, json, rust, bash), validate that
@@ -188,7 +182,7 @@
 - Fixed a stale `M.version` constant that had drifted from the released
   tag, and taught `scripts/create-release` to bump it automatically.
 
-## [0.7.8] - 2026-04-25
+## v0.7.8 (2026-04-25)
 
 ### Changed
 
@@ -198,14 +192,14 @@
 
 - `queries/lex/highlights.scm`: synced to match tree-sitter v0.9.1 grammar. The vendored query still referenced the old `footnote_reference` node, which v0.9.0 of tree-sitter-lex renamed to `annotation_reference` (alongside the new `[::label]` syntax). `vim.treesitter.start` errored with `Invalid node type "footnote_reference"` whenever tree-sitter highlighting was enabled. Bug was latent on `main` since v0.7.7, surfaced (not introduced) by the v0.8.8 bump.
 
-## [0.7.7] - 2026-04-24
+## v0.7.7 (2026-04-24)
 
 ### Changed
 
 - Bumped pinned LSP version to v0.8.7 (picks up the comms v0.14.0 spec content).
 - Bumped pinned tree-sitter grammar to v0.9.1 (picks up the new `[::label]` annotation reference syntax and directly-nested inline formatting markers).
 
-## [0.7.6] - 2026-04-22
+## v0.7.6 (2026-04-22)
 
 ### Changed
 
