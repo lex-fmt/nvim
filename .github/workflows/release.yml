@@ -1,34 +1,31 @@
 name: Release
 
+# Thin caller of arthur-debert/release/.github/workflows/nvim-plugin.yml@v1.
+# All the version-bump + tag + push + GH-release logic lives there;
+# this file carries the bindings (input, secrets, trigger contract).
+#
+# Replaces the prior hand-rolled, tag-push-triggered workflow. New trigger
+# contract: workflow_dispatch — matches the cross-repo cascade-handler
+# pattern the release-lex orchestrator drives.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 0.11.0 or 1.0.0-rc.1). No leading v.'
+        required: true
+        type: string
+
 permissions:
   contents: write
 
-on:
-  push:
-    tags:
-      - 'v*'
-
 jobs:
   release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # need annotated tag objects
-
-      - name: Get release notes from tag annotation
-        id: notes
-        run: |
-          BODY=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")
-          {
-            echo "body<<RELEASE_NOTES_EOF"
-            echo "$BODY"
-            echo "RELEASE_NOTES_EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          body: ${{ steps.notes.outputs.body }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    uses: arthur-debert/release/.github/workflows/nvim-plugin.yml@v1
+    with:
+      version: ${{ inputs.version }}
+      # submodules: true — comms/ is a submodule and `## [Unreleased]`
+      # extraction + plugin sanity check both need the full tree.
+      submodules: true
+    secrets:
+      RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
