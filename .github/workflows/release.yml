@@ -1,34 +1,42 @@
 name: Release
 
+# Thin caller of arthur-debert/release/.github/workflows/nvim-plugin.yml@v1.
+# All the version-bump + tag + push + GH-release logic lives there;
+# this file carries the bindings (input, secrets, trigger contract).
+#
+# Replaces the prior hand-rolled, tag-push-triggered workflow. New trigger
+# contract: workflow_dispatch — matches the cross-repo cascade-handler
+# pattern the release-lex orchestrator drives.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 0.11.0 or 1.0.0-rc.1). No leading v.'
+        required: true
+        type: string
+
 permissions:
   contents: write
 
-on:
-  push:
-    tags:
-      - 'v*'
-
 jobs:
   release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # need annotated tag objects
-
-      - name: Get release notes from tag annotation
-        id: notes
-        run: |
-          BODY=$(git tag -l --format='%(contents)' "$GITHUB_REF_NAME")
-          {
-            echo "body<<RELEASE_NOTES_EOF"
-            echo "$BODY"
-            echo "RELEASE_NOTES_EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          body: ${{ steps.notes.outputs.body }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    uses: arthur-debert/release/.github/workflows/nvim-plugin.yml@v1
+    with:
+      version: ${{ inputs.version }}
+      # changelog-path: '' — this repo's CHANGELOG uses lexed-style
+      # `## vX.Y.Z (YYYY-MM-DD)` (not bracketed Keep-a-Changelog).
+      # scripts/release/update-release rolls UNRELEASED.md into
+      # CHANGELOG with that heading style as part of the cascade
+      # flow (on-upstream-released.yml). The reusable workflow's
+      # CHANGELOG awk regex expects strict `## [<v>] - <date>`, so
+      # we disable changelog handling at the workflow level — the
+      # workflow just tags + creates the GH release with default
+      # "Release v<v>" notes. Aligning CHANGELOG format is a
+      # separate follow-up that needs to touch update-release too.
+      changelog-path: ''
+      # submodules: true — comms/ is a submodule and the plugin
+      # sanity check needs the full tree.
+      submodules: true
+    secrets:
+      RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
