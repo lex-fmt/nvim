@@ -35,6 +35,12 @@ jobs:
       # "Release v<v>" notes. Aligning CHANGELOG format is a
       # separate follow-up that needs to touch update-release too.
       changelog-path: ''
+      # version-file: the canonical Lua plugin convention is to
+      # carry a runtime version constant in `lua/<name>/init.lua`;
+      # the workflow bumps it via perl to stay in sync with the tag.
+      # Otherwise plugin code reading `require("lex").version`
+      # drifts behind the published tag.
+      version-file: lua/lex/init.lua
       # submodules: true — comms/ is a submodule and the plugin
       # sanity check needs the full tree.
       submodules: true
