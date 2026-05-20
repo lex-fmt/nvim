@@ -51,9 +51,9 @@ jobs:
     steps:
       - name: Announce trigger
         env:
-          # Route `client_payload.*` through env, not direct `${{ … }}`
-          # interpolation in `run`, so an attacker-controlled dispatch
-          # payload can't inject shell into the script.
+          # Route `client_payload.*` through env, not direct GHA
+          # expression interpolation in `run`, so an attacker-controlled
+          # dispatch payload can't inject shell into the script.
           UPSTREAM_SOURCE: ${{ github.event.client_payload.source }}
           UPSTREAM_VERSION: ${{ github.event.client_payload.version }}
           UPSTREAM_RUN_URL: ${{ github.event.client_payload.run_url }}
@@ -133,8 +133,9 @@ jobs:
           # bail out here. Seed a default cascade entry so the bump
           # proceeds; the entry names the upstream + version that
           # triggered us. `UPSTREAM_SOURCE`/`UPSTREAM_VERSION` are
-          # routed via env (not `${{ … }}` in the script body) to
-          # avoid command injection from a malicious dispatch payload.
+          # routed via env (not GHA expression interpolation in the
+          # script body) to avoid command injection from a malicious
+          # dispatch payload.
           {
             echo "<!-- Release notes for the next version. -->"
             echo "<!-- Updated as work is done; consumed by scripts/create-release. -->"
