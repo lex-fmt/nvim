@@ -164,24 +164,40 @@
 (number_reference) @markup.link
 
 ; === Spell checking ===
-; Enable spell checking on prose content (leaf text nodes)
+; Policy: spell-check all prose. Exclude only annotation labels/params, verbatim
+; bodies (code/preformatted), and non-prose inline atoms. Verbatim *subjects*
+; are prose and checked. The trailing descriptor after a closing `::`
+; (annotation_inline_text) is prose and checked. Annotation block bodies
+; inherit @spell from their inner line_content/text_content.
+;
+; Tree-sitter rule order matters: later patterns matching the same node
+; override earlier ones. Verbatim's own subject_content is re-enabled at the
+; bottom so the broad ancestor-based suppression doesn't accidentally cover it.
+
+; Enable on prose leaves
 (line_content) @spell
 (text_content) @spell
 (subject_content) @spell
+(annotation_inline_text) @spell
 
-; Disable in verbatim blocks (content is code/preformatted)
-(verbatim_block (paragraph (text_line (line_content) @nospell)))
-(verbatim_block (verbatim_content) @nospell)
-(verbatim_block subject: (subject_content) @nospell)
-(verbatim_group_item (paragraph (text_line (line_content) @nospell)))
-(verbatim_group_item (verbatim_content) @nospell)
-(verbatim_group_item subject: (subject_content) @nospell)
-
-; Disable on non-prose inline elements
+; Disable on non-prose inline atoms
 (code_span) @nospell
 (math_span) @nospell
 (escape_sequence) @nospell
 
-; Disable on metadata/annotations
+; Disable on the annotation label/param region (text between `::` `::`)
 (annotation_header) @nospell
-(annotation_inline_text) @nospell
+
+; Disable inside verbatim bodies — handles arbitrary nesting (definitions,
+; lists, sessions, group items) without enumerating every structural path.
+((line_content) @nospell
+  (#has-ancestor? @nospell verbatim_block verbatim_group_item))
+((text_content) @nospell
+  (#has-ancestor? @nospell verbatim_block verbatim_group_item))
+; subject_content nested inside verbatim, but NOT the verbatim's own subject
+; field. `#not-has-parent?` excludes the field-direct case so the verbatim
+; subject stays prose-spell-checked while inner definitions/lists in the
+; body are suppressed.
+((subject_content) @nospell
+  (#has-ancestor? @nospell verbatim_block verbatim_group_item)
+  (#not-has-parent? @nospell verbatim_block verbatim_group_item))
