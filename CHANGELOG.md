@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.10.4 (2026-05-21)
+
+- Cascade release: upstream tree-sitter-lex released v0.11.0.
+
 ## v0.10.1 (2026-05-17)
 
 ### Changed
