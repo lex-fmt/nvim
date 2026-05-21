@@ -6,13 +6,18 @@
 --
 -- Run from this plugin's root:
 --
---   LEX_TREE_SITTER_PATH=/path/to/tree-sitter-lex \
---     nvim --headless -u NONE -i NONE -l test/spellcheck_matrix.lua
+--   LEX_TREESITTER_PATH=/path/to/tree-sitter-lex \
+--     nvim --clean --headless -u NONE -i NONE -l test/spellcheck_matrix.lua
+--
+-- The --clean flag is load-bearing: nvim's tree-sitter runtime merges every
+-- queries/lex/*.scm on the runtimepath (including any user override under
+-- ~/.config/nvim/queries/lex/ with `;extends`), so an isolated runtime is
+-- required to test the plugin's queries in isolation.
 --
 -- Exits 0 on full pass, 1 on any mismatch (prints a diff).
 
 local plugin_root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h:h")
-local ts_path = os.getenv("LEX_TREE_SITTER_PATH")
+local ts_path = os.getenv("LEX_TREESITTER_PATH")
 if not ts_path or ts_path == "" then
   ts_path = vim.fn.fnamemodify(plugin_root .. "/../tree-sitter-lex", ":p"):gsub("/$", "")
 end

@@ -170,9 +170,9 @@
 ; (annotation_inline_text) is prose and checked. Annotation block bodies
 ; inherit @spell from their inner line_content/text_content.
 ;
-; Tree-sitter rule order matters: later patterns matching the same node
-; override earlier ones. Verbatim's own subject_content is re-enabled at the
-; bottom so the broad ancestor-based suppression doesn't accidentally cover it.
+; The broad ancestor-based @nospell rule below uses `#not-has-parent?` to
+; exempt the verbatim's own subject field, so it stays prose-spell-checked
+; while body-nested prose leaves are suppressed.
 
 ; Enable on prose leaves
 (line_content) @spell
