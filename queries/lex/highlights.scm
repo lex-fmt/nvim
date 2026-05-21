@@ -164,24 +164,42 @@
 (number_reference) @markup.link
 
 ; === Spell checking ===
-; Enable spell checking on prose content (leaf text nodes)
+; Policy: spell-check all prose. Exclude only annotation labels/params, verbatim
+; bodies (code/preformatted), and non-prose inline atoms. Verbatim *subjects*
+; are prose and checked. The trailing descriptor after a closing `::`
+; (annotation_inline_text) is prose and checked. Annotation block bodies
+; inherit @spell from their inner line_content/text_content.
+;
+; The broad ancestor-based @nospell rule below uses `#not-has-parent?` to
+; exempt the verbatim's own subject field, so it stays prose-spell-checked
+; while body-nested prose leaves are suppressed.
+
+; Enable on prose leaves
 (line_content) @spell
 (text_content) @spell
 (subject_content) @spell
+(annotation_inline_text) @spell
 
-; Disable in verbatim blocks (content is code/preformatted)
-(verbatim_block (paragraph (text_line (line_content) @nospell)))
-(verbatim_block (verbatim_content) @nospell)
-(verbatim_block subject: (subject_content) @nospell)
-(verbatim_group_item (paragraph (text_line (line_content) @nospell)))
-(verbatim_group_item (verbatim_content) @nospell)
-(verbatim_group_item subject: (subject_content) @nospell)
-
-; Disable on non-prose inline elements
+; Disable on non-prose inline atoms
 (code_span) @nospell
 (math_span) @nospell
 (escape_sequence) @nospell
 
-; Disable on metadata/annotations
+; References are identifiers, not prose. (text_content) above covers their
+; surrounding range, so without an inner @nospell the reference label would
+; get spell-checked. @nospell on the (reference) subtree shadows it.
+(reference) @nospell
+
+; Disable on the annotation label/param region (text between `::` `::`)
 (annotation_header) @nospell
-(annotation_inline_text) @nospell
+
+; Disable prose leaves nested inside verbatim bodies. The verbatim's own
+; subject_content is a direct field of verbatim_block / verbatim_group_item;
+; #not-has-parent? excludes that case so the subject stays spell-checked
+; while inner definitions / lists / paragraphs in the body are suppressed.
+; The same #not-has-parent? guard is safe for line_content and text_content —
+; neither is ever a direct child of a verbatim_* node — so one combined
+; pattern covers all three node kinds without duplication.
+(([(line_content) (text_content) (subject_content)] @nospell)
+  (#has-ancestor? @nospell verbatim_block verbatim_group_item)
+  (#not-has-parent? @nospell verbatim_block verbatim_group_item))
