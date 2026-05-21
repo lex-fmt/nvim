@@ -143,9 +143,10 @@ local matrix = {
   { "note nott_a_typo_label",            "nospell" },
   { "data src=somepath",                 "nospell" },
 
-  -- Code span + math span inside otherwise-prose paragraph
+  -- Code span + math span + reference inside otherwise-prose paragraph
   { "teh code span",                     "nospell" },
   { "teh math",                          "nospell" },
+  { "teh refernce",                      "nospell" },
 }
 
 -- Run ----------------------------------------------------------------------

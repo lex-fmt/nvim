@@ -185,19 +185,21 @@
 (math_span) @nospell
 (escape_sequence) @nospell
 
+; References are identifiers, not prose. (text_content) above covers their
+; surrounding range, so without an inner @nospell the reference label would
+; get spell-checked. @nospell on the (reference) subtree shadows it.
+(reference) @nospell
+
 ; Disable on the annotation label/param region (text between `::` `::`)
 (annotation_header) @nospell
 
-; Disable inside verbatim bodies — handles arbitrary nesting (definitions,
-; lists, sessions, group items) without enumerating every structural path.
-((line_content) @nospell
-  (#has-ancestor? @nospell verbatim_block verbatim_group_item))
-((text_content) @nospell
-  (#has-ancestor? @nospell verbatim_block verbatim_group_item))
-; subject_content nested inside verbatim, but NOT the verbatim's own subject
-; field. `#not-has-parent?` excludes the field-direct case so the verbatim
-; subject stays prose-spell-checked while inner definitions/lists in the
-; body are suppressed.
-((subject_content) @nospell
+; Disable prose leaves nested inside verbatim bodies. The verbatim's own
+; subject_content is a direct field of verbatim_block / verbatim_group_item;
+; #not-has-parent? excludes that case so the subject stays spell-checked
+; while inner definitions / lists / paragraphs in the body are suppressed.
+; The same #not-has-parent? guard is safe for line_content and text_content —
+; neither is ever a direct child of a verbatim_* node — so one combined
+; pattern covers all three node kinds without duplication.
+(([(line_content) (text_content) (subject_content)] @nospell)
   (#has-ancestor? @nospell verbatim_block verbatim_group_item)
   (#not-has-parent? @nospell verbatim_block verbatim_group_item))
