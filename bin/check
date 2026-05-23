@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Canonical nvim-plugin check entry point. Same script local + CI.
+# Canonical nvim-plugin check entry point for lex-fmt/nvim.
+# Same script local + CI.
 #
-# Delegates to the consumer's scripts/test-all if present (the
-# common pattern for Lua plugins with bats-driven tests), else
-# falls back to invoking busted directly on tests/.
-#
-# Most nvim-plugin consumers in this portfolio use bats to drive
-# Neovim under test (matches the shell-subshell isolation pattern
-# used by other Bash-tested stacks). scripts/test-all is the
-# canonical entry point for that.
-#
-# Usage:
-#   bin/check                # full suite
-#   bin/check --filter foo   # consumer-side scripts/test-all forwards
-#
-# Source of truth: arthur-debert/release templates/nvim-plugin/bin/check.
+# Runs the bats suite the way CI does (test.yml → ci.yml thin caller
+# → nvim-plugin-ci.yml@v1 → this script). The bats tests need
+# lexd-lsp installed and the tree-sitter-lex source extracted at
+# LEX_TREESITTER_PATH — scripts/ci-fetch-deps.sh sets both up if
+# they're missing, using shared/lex-deps.json's pinned versions.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
-if [ -x scripts/test-all ]; then
-    exec scripts/test-all "$@"
+# Fetch cross-repo deps if they're not already present (CI runs this
+# explicitly as a pre-check; local invocations get it on-demand).
+if [ ! -d /tmp/tree-sitter-lex ] || ! command -v lexd-lsp >/dev/null 2>&1; then
+    if [ -x scripts/ci-fetch-deps.sh ]; then
+        echo "==> fetching cross-repo deps (lexd-lsp + tree-sitter)"
+        scripts/ci-fetch-deps.sh
+    fi
 fi
 
-if [ -d tests ] && command -v busted >/dev/null 2>&1; then
-    exec busted tests "$@"
+if ! command -v bats >/dev/null 2>&1; then
+    echo "bin/check: bats not found on \$PATH" >&2
+    echo "  install: sudo apt-get install bats (or brew install bats-core)" >&2
+    exit 2
 fi
 
-echo "bin/check: no scripts/test-all and no busted+tests/ — nothing to do."
-echo "  Wire scripts/test-all in this repo to give bin/check something to delegate to."
+cd test
+exec env TERM=dumb LEX_TREESITTER_PATH=/tmp/tree-sitter-lex \
+    bats lex_nvim_plugin.bats --formatter tap "$@"
