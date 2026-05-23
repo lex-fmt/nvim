@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Canonical nvim-plugin check entry point for lex-fmt/nvim.
+# Same script local + CI.
+#
+# Runs the bats suite the way CI does (test.yml → ci.yml thin caller
+# → nvim-plugin-ci.yml@v1 → this script). The bats tests need
+# lexd-lsp installed and the tree-sitter-lex source extracted at
+# LEX_TREESITTER_PATH — scripts/ci-fetch-deps.sh sets both up if
+# they're missing, using shared/lex-deps.json's pinned versions.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
+
+# Fetch cross-repo deps if they're not already present (CI runs this
+# explicitly as a pre-check; local invocations get it on-demand).
+if [ ! -d /tmp/tree-sitter-lex ] || ! command -v lexd-lsp >/dev/null 2>&1; then
+    if [ -x scripts/ci-fetch-deps.sh ]; then
+        echo "==> fetching cross-repo deps (lexd-lsp + tree-sitter)"
+        scripts/ci-fetch-deps.sh
+    fi
+fi
+
+if ! command -v bats >/dev/null 2>&1; then
+    echo "bin/check: bats not found on \$PATH" >&2
+    echo "  install: sudo apt-get install bats (or brew install bats-core)" >&2
+    exit 2
+fi
+
+cd test
+exec env TERM=dumb LEX_TREESITTER_PATH=/tmp/tree-sitter-lex \
+    bats lex_nvim_plugin.bats --formatter tap "$@"

@@ -42,5 +42,7 @@ luac.out
 .DS_Store
 
 # Downloaded binaries and compiled parsers
-bin/
+# Allow bin/<verb> canonical shims (per arthur-debert/release take-iii).
+/bin/*
+!/bin/check
 .padz
