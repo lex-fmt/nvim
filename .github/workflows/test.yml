@@ -1,4 +1,8 @@
-name: Neovim Plugin CI
+name: CI
+
+# Thin caller of arthur-debert/release/.github/workflows/nvim-plugin-ci.yml,
+# plus a sibling Lua lint job (luacheck — not in the canonical because
+# only this consumer needs it).
 
 on:
   push:
@@ -6,84 +10,27 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          submodules: true
+  ci:
+    uses: arthur-debert/release/.github/workflows/nvim-plugin-ci.yml@v1
+    with:
+      # bats is the test runner.
+      bats: true
+      # Pre-check fetches the pinned lexd-lsp + tree-sitter source +
+      # verifies the generated theme matches comms.
+      pre-check: scripts/ci-fetch-deps.sh
+      # No bin/check on this repo yet (take-iii bin/<verb> migration
+      # is separate, tracked in arthur-debert/release#107). Invoke
+      # the bats suite directly.
+      check-command: 'cd test && TERM=dumb LEX_TREESITTER_PATH=/tmp/tree-sitter-lex bats lex_nvim_plugin.bats --formatter tap'
+      submodules: true
 
-      - name: Install Neovim
-        uses: rhysd/action-setup-vim@v1
-        with:
-          neovim: true
-          version: stable
-
-      - name: Install bats
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
-
-      - name: Verify generated theme is in sync with comms
-        run: python3 scripts/gen-theme.py --check
-
-      - name: Read pinned versions
-        id: deps
-        run: |
-          LEX_LSP_VERSION=$(jq -r '.["lexd-lsp"]' shared/lex-deps.json)
-          LEX_LSP_REPO=$(jq -r '.["lexd-lsp-repo"]' shared/lex-deps.json)
-          TREE_SITTER_VERSION=$(jq -r '.["tree-sitter"]' shared/lex-deps.json)
-          TREE_SITTER_REPO=$(jq -r '.["tree-sitter-repo"]' shared/lex-deps.json)
-          echo "lsp_version=$LEX_LSP_VERSION" >> $GITHUB_OUTPUT
-          echo "lsp_repo=$LEX_LSP_REPO" >> $GITHUB_OUTPUT
-          echo "ts_version=$TREE_SITTER_VERSION" >> $GITHUB_OUTPUT
-          echo "ts_repo=$TREE_SITTER_REPO" >> $GITHUB_OUTPUT
-          echo "Using lexd-lsp $LEX_LSP_VERSION from $LEX_LSP_REPO, tree-sitter $TREE_SITTER_VERSION from $TREE_SITTER_REPO"
-
-      - name: Download lexd-lsp binary
-        uses: robinraju/release-downloader@v1.13
-        with:
-          repository: ${{ steps.deps.outputs.lsp_repo }}
-          tag: ${{ steps.deps.outputs.lsp_version }}
-          fileName: "lexd-lsp-x86_64-unknown-linux-gnu.tar.gz"
-          tarBall: false
-          zipBall: false
-          out-file-path: /tmp
-
-      - name: Extract and install lexd-lsp
-        run: |
-          mkdir -p /tmp/lexd-lsp-extract
-          tar -xzf /tmp/lexd-lsp-x86_64-unknown-linux-gnu.tar.gz -C /tmp/lexd-lsp-extract
-          # arthur-debert/release@v1 packages binaries under <name>-<target>/, but
-          # earlier releases had the binary at the top level — find it either way.
-          BIN=$(find /tmp/lexd-lsp-extract -name lexd-lsp -type f | head -1)
-          sudo install -m 0755 "$BIN" /usr/local/bin/lexd-lsp
-
-      - name: Download tree-sitter source
-        uses: robinraju/release-downloader@v1.13
-        with:
-          repository: ${{ steps.deps.outputs.ts_repo }}
-          tag: ${{ steps.deps.outputs.ts_version }}
-          fileName: "tree-sitter.tar.gz"
-          tarBall: false
-          zipBall: false
-          out-file-path: /tmp
-
-      - name: Extract tree-sitter source
-        run: |
-          mkdir -p /tmp/tree-sitter-lex
-          tar -xzf /tmp/tree-sitter.tar.gz -C /tmp/tree-sitter-lex
-
-      - name: Run tests
-        env:
-          TERM: dumb
-          LEX_TREESITTER_PATH: /tmp/tree-sitter-lex
-        run: |
-          cd test
-          bats lex_nvim_plugin.bats --formatter tap
-
+  # luacheck is nvim-plugin-specific; the canonical nvim-plugin-ci.yml
+  # doesn't carry it. Kept inline. Note `|| true` — historically
+  # warnings-only.
   lint:
     name: Lua Lint
     runs-on: ubuntu-latest
