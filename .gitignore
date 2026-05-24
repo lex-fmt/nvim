@@ -45,4 +45,8 @@ luac.out
 # Allow bin/<verb> canonical shims (per arthur-debert/release take-iii).
 /bin/*
 !/bin/check
+!/bin/changelog
+!/bin/changelog-add
+!/bin/changelog-cut
+!/bin/changelog-render
 .padz
