@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-set -e
-
-# Default to JUnit if no arguments provided, based on the prompt's phrasing.
-# "Make the runner output a junit xml output or a friendly output if passed --format=simple"
 FORMATTER="junit"
-
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --format=simple) FORMATTER="pretty" ;;
@@ -15,23 +11,9 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# Directory of this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEST_FILE="$SCRIPT_DIR/lex_nvim_plugin.bats"
+source "$SCRIPT_DIR/../lib/bats-harness.bash"
 
-# Check if bats is installed
-if ! command -v bats &> /dev/null; then
-    echo "Error: bats is not installed."
-    echo "Please install bats-core (e.g., brew install bats-core)"
-    exit 1
-fi
+harness_require_bats
 
-# Run bats
-# Note: older bats versions might not support --formatter junit without a plugin.
-# Assuming a modern bats environment as tested (Bats 1.13.0).
-
-exec bats "$TEST_FILE" --formatter "$FORMATTER"
-
-
-
-
+exec bats "$SCRIPT_DIR/lex_nvim_plugin.bats" --formatter "$FORMATTER"
