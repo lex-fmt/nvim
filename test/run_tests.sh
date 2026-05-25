@@ -70,21 +70,21 @@ for i in "${!TESTS[@]}"; do
     idx=$((i + 1))
 
     if is_none_init "$test_file"; then
-        init_arg="-u NONE"
+        nvim_args=(--headless -u NONE -l "$SCRIPT_DIR/$test_file")
     else
-        init_arg="-u $MINIMAL_INIT"
+        nvim_args=(--headless -u "$MINIMAL_INIT" -l "$SCRIPT_DIR/$test_file")
     fi
 
-    nvim --headless $init_arg -l "$SCRIPT_DIR/$test_file" >"$tmpout" 2>&1 && status=0 || status=$?
-    output=$(<"$tmpout")
+    status=0
+    nvim "${nvim_args[@]}" >"$tmpout" 2>&1 || status=$?
 
-    if [[ $status -eq 0 ]] && [[ "$output" =~ TEST_PASSED ]]; then
+    if [[ $status -eq 0 ]] && grep -q "TEST_PASSED" "$tmpout"; then
         echo "ok $idx - $test_file"
         pass=$((pass + 1))
     else
         echo "not ok $idx - $test_file"
-        if [[ -n "$output" ]]; then
-            echo "$output" | sed 's/^/# /'
+        if [[ -s "$tmpout" ]]; then
+            sed 's/^/# /' "$tmpout"
         fi
         fail=$((fail + 1))
         failures+=("$test_file")
