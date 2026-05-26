@@ -41,6 +41,10 @@ luac.out
 
 .DS_Store
 
+# fetch-deps stamps and downloaded resources
+.deps
+resources
+
 # Downloaded binaries and compiled parsers
 # Allow bin/<verb> canonical shims (per arthur-debert/release take-iii).
 /bin/*
