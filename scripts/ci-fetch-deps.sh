@@ -53,9 +53,9 @@ fi
 "${INSTALL_CMD[@]}" resources/lexd-lsp "$INSTALL_DIR/lexd-lsp"
 echo "Installed: $INSTALL_DIR/lexd-lsp"
 
-# tree-sitter resources: tests expect LEX_TREESITTER_PATH=/tmp/tree-sitter-lex
+# tree-sitter: tests compile from C source (src/parser.c) and expect the
+# full tree-sitter-lex checkout at LEX_TREESITTER_PATH=/tmp/tree-sitter-lex
 rm -rf /tmp/tree-sitter-lex
-mkdir -p /tmp/tree-sitter-lex
-cp -r resources/queries /tmp/tree-sitter-lex/
-cp resources/tree-sitter-lex.wasm /tmp/tree-sitter-lex/ 2>/dev/null || true
+cp -r resources/tree-sitter-lex /tmp/tree-sitter-lex
 echo "Bridged tree-sitter resources to /tmp/tree-sitter-lex"
+ls /tmp/tree-sitter-lex | head -10
