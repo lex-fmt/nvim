@@ -55,7 +55,7 @@ end
 
 -- Apply monochrome theme: grayscale highlighting that adapts to dark/light mode.
 -- Palette + token rules come from lua/lex/theme_data.lua, which is generated
--- by scripts/gen-theme.py from comms/shared/theming/lex-theme.json.
+-- by app-bin/gen-theme.py from comms/shared/theming/lex-theme.json.
 -- All colors are pre-resolved per mode at generate time; no runtime indirection.
 function M.apply_monochrome()
   local theme_data = require("lex.theme_data")

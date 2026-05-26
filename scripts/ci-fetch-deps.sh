@@ -42,7 +42,7 @@ else
 fi
 
 echo "===== 1. Verify generated theme sync with comms ====="
-python3 scripts/gen-theme.py --check
+python3 app-bin/gen-theme.py --check
 
 if [ ! -f shared/lex-deps.json ]; then
     echo "::error::shared/lex-deps.json missing — can't pin dep versions" >&2
