@@ -25,6 +25,7 @@ echo "===== 2. Fetch dependencies via fetch-deps ====="
 if ! command -v fetch-deps &>/dev/null; then
     FETCH_DEPS_URL="https://raw.githubusercontent.com/arthur-debert/release/main/bin/fetch-deps"
     FETCH_DEPS_BIN="$(mktemp)"
+    trap 'rm -f "$FETCH_DEPS_BIN"' EXIT
     curl -fsSL "$FETCH_DEPS_URL" -o "$FETCH_DEPS_BIN"
     chmod +x "$FETCH_DEPS_BIN"
     FETCH_DEPS="$FETCH_DEPS_BIN"
