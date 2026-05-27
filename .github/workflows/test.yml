@@ -19,7 +19,7 @@ jobs:
     with:
       # Pre-check fetches the pinned lexd-lsp + tree-sitter source +
       # verifies the generated theme matches comms.
-      pre-check: scripts/ci-fetch-deps.sh
+      pre-check: app-bin/ci-fetch-deps.sh
       check-command: 'cd test && TERM=dumb LEX_TREESITTER_PATH=/tmp/tree-sitter-lex bash run_tests.sh'
       submodules: true
 
