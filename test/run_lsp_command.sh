@@ -38,7 +38,7 @@ fi
 
 # Create temp lua script
 TEMP_SCRIPT=$(mktemp /tmp/nvim_lsp_XXXXXX.lua)
-trap "rm -f $TEMP_SCRIPT" EXIT
+trap 'rm -f "$TEMP_SCRIPT"' EXIT
 
 cat > "$TEMP_SCRIPT" <<'EOF'
 local plugin_dir = "PLUGIN_DIR_PLACEHOLDER"

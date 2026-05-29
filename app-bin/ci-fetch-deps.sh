@@ -59,4 +59,13 @@ echo "Installed: $INSTALL_DIR/lexd-lsp"
 rm -rf /tmp/tree-sitter-lex
 cp -r resources/tree-sitter-lex /tmp/tree-sitter-lex
 echo "Bridged tree-sitter resources to /tmp/tree-sitter-lex"
-ls /tmp/tree-sitter-lex | head -10
+count=0
+for entry in /tmp/tree-sitter-lex/*; do
+    [[ -e "$entry" ]] || continue
+    echo "${entry##*/}"
+    count=$((count + 1))
+    # NB: plain `if` (not `… && break`) so the loop's final command
+    # doesn't return non-zero when the test is false — under `set -e`
+    # that would make the whole script exit 1 (it's the last statement).
+    if [[ "$count" -ge 10 ]]; then break; fi
+done

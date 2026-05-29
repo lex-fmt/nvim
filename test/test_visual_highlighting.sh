@@ -21,7 +21,7 @@ fi
 
 # Create temp lua script with LSP and semantic tokens enabled
 TEMP_SCRIPT=$(mktemp /tmp/nvim_visual_XXXXXX.lua)
-trap "rm -f $TEMP_SCRIPT" EXIT
+trap 'rm -f "$TEMP_SCRIPT"' EXIT
 
 cat > "$TEMP_SCRIPT" <<'EOF'
 local plugin_dir = "PLUGIN_DIR_PLACEHOLDER"
