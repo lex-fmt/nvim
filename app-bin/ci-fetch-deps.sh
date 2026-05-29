@@ -64,5 +64,8 @@ for entry in /tmp/tree-sitter-lex/*; do
     [[ -e "$entry" ]] || continue
     echo "${entry##*/}"
     count=$((count + 1))
-    [[ "$count" -ge 10 ]] && break
+    # NB: plain `if` (not `… && break`) so the loop's final command
+    # doesn't return non-zero when the test is false — under `set -e`
+    # that would make the whole script exit 1 (it's the last statement).
+    if [[ "$count" -ge 10 ]]; then break; fi
 done
