@@ -59,4 +59,10 @@ echo "Installed: $INSTALL_DIR/lexd-lsp"
 rm -rf /tmp/tree-sitter-lex
 cp -r resources/tree-sitter-lex /tmp/tree-sitter-lex
 echo "Bridged tree-sitter resources to /tmp/tree-sitter-lex"
-ls /tmp/tree-sitter-lex | head -10
+count=0
+for entry in /tmp/tree-sitter-lex/*; do
+    [[ -e "$entry" ]] || continue
+    echo "${entry##*/}"
+    count=$((count + 1))
+    [[ "$count" -ge 10 ]] && break
+done

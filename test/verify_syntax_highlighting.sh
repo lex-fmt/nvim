@@ -27,7 +27,7 @@ echo ""
 
 # Create a temporary Lua script for verification
 TEMP_SCRIPT=$(mktemp /tmp/nvim_syntax_verify_XXXXXX.lua)
-trap "rm -f $TEMP_SCRIPT" EXIT
+trap 'rm -f "$TEMP_SCRIPT"' EXIT
 
 cat > "$TEMP_SCRIPT" <<EOF
 -- Open the file

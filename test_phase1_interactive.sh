@@ -53,7 +53,7 @@ echo -e "${BLUE}Test file: $TEST_FILE${NC}\n"
 # Function to wait for user
 wait_for_user() {
     echo -e "\n${YELLOW}Press ENTER to continue...${NC}"
-    read
+    read -r
 }
 
 echo -e "${BLUE}=== Feature 1: Syntax Highlighting (Semantic Tokens) ===${NC}\n"
@@ -77,7 +77,7 @@ echo -e "\n${GREEN}Did you see syntax highlighting? (colors/styles on different 
 echo "1) Yes - everything looks good"
 echo "2) No - no colors at all"
 echo "3) Partial - some elements highlighted, others not"
-read -p "Your answer (1/2/3): " answer
+read -rp "Your answer (1/2/3): " answer
 
 case $answer in
     1)
@@ -123,7 +123,7 @@ echo -e "\n${GREEN}Did you see a hierarchical list of symbols?${NC}"
 echo "1) Yes - saw sessions, definitions, etc. in a tree"
 echo "2) No - no symbols shown"
 echo "3) Error - got an error message"
-read -p "Your answer (1/2/3): " answer
+read -rp "Your answer (1/2/3): " answer
 
 case $answer in
     1)
@@ -175,7 +175,7 @@ echo -e "\n${GREEN}Did hover show information when you pressed K on references/a
 echo "1) Yes - saw popup with content preview"
 echo "2) No - nothing happened"
 echo "3) Only for some elements"
-read -p "Your answer (1/2/3): " answer
+read -rp "Your answer (1/2/3): " answer
 
 case $answer in
     1)
@@ -233,7 +233,7 @@ echo -e "\n${GREEN}Did folding work?${NC}"
 echo "1) Yes - could fold/unfold sessions, lists, etc."
 echo "2) No - nothing happened when pressing zc"
 echo "3) Partial - some elements fold, others don't"
-read -p "Your answer (1/2/3): " answer
+read -rp "Your answer (1/2/3): " answer
 
 case $answer in
     1)
