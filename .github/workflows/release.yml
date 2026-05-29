@@ -1,6 +1,6 @@
 name: Release
 
-# Thin caller of arthur-debert/release/.github/workflows/nvim-plugin.yml@v1.
+# Thin caller of arthur-debert/release/.github/workflows/nvim-plugin.yml@v2.
 # All the version-bump + tag + push + GH-release logic lives there;
 # this file carries the bindings (input, secrets, trigger contract).
 #
@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   release:
-    uses: arthur-debert/release/.github/workflows/nvim-plugin.yml@v1
+    uses: arthur-debert/release/.github/workflows/nvim-plugin.yml@v2
     with:
       version: ${{ inputs.version }}
       # version-file: the canonical Lua plugin convention is to
