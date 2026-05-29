@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   ci:
-    uses: arthur-debert/release/.github/workflows/nvim-plugin-ci.yml@v1
+    uses: arthur-debert/release/.github/workflows/nvim-plugin-ci.yml@v2
     with:
       # Pre-check fetches the pinned lexd-lsp + tree-sitter source +
       # verifies the generated theme matches comms.
