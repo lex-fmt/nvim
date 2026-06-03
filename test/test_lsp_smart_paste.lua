@@ -58,20 +58,23 @@ fh:close()
 
 vim.cmd("edit " .. tmp)
 
-local waited = 0
-while not captured_client and waited < 5000 do
-  vim.wait(100)
-  waited = waited + 100
-end
+vim.wait(5000, function()
+  return captured_client ~= nil
+end, 100)
 
 if not captured_client then
   print("TEST_FAILED: LSP did not attach")
   vim.cmd("cquit 1")
 end
 
-vim.wait(300)
+-- 1. Capability advertised. Poll: capabilities populate on initialize, which
+--    can land slightly after on_attach fires.
+vim.wait(5000, function()
+  local exp = captured_client.server_capabilities
+    and captured_client.server_capabilities.experimental
+  return not not (exp and exp.lexPreparePaste)
+end, 100)
 
--- 1. Capability advertised.
 local experimental = captured_client.server_capabilities
   and captured_client.server_capabilities.experimental
 if not (experimental and experimental.lexPreparePaste) then
@@ -100,7 +103,11 @@ vim.api.nvim_win_set_cursor(0, { 3, 0 })
 local clipboard = "        deep one\n        deep two"
 vim.paste(vim.split(clipboard, "\n", { plain = true }), -1)
 
-vim.wait(200)
+-- Poll until the pasted text lands rather than sleeping a fixed interval.
+vim.wait(2000, function()
+  local buf = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+  return buf:find("deep one", 1, true) ~= nil
+end, 50)
 
 local content = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
 

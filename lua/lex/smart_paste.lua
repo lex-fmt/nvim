@@ -69,8 +69,13 @@ local function prepare(client, bufnr, pasted_text)
   -- Synchronous request: `vim.paste` is called inline on the paste keystroke,
   -- so we cannot defer. 1s budget mirrors the interactive LSP calls elsewhere;
   -- a slow/hung server must not wedge the editor — on timeout we fall through
-  -- to native paste.
-  local response = client.request_sync(PREPARE_PASTE, params, 1000, bufnr)
+  -- to native paste. `vim.lsp.buf_request_sync` is the non-deprecated sync
+  -- path; it returns a per-client-id map of `{ result?, err? }`.
+  local responses, err = vim.lsp.buf_request_sync(bufnr, PREPARE_PASTE, params, 1000)
+  if err or type(responses) ~= "table" then
+    return nil
+  end
+  local response = responses[client.id]
   if not response or response.err or type(response.result) ~= "table" then
     return nil
   end
@@ -85,21 +90,26 @@ end
 --
 -- `lines` is the clipboard split on newlines (Neovim's `vim.paste` contract);
 -- `phase` is -1 for a non-chunked paste, or 1..3 for the start/middle/end of a
--- chunked (large) bracketed paste. We only transform a complete, single-shot
+-- chunked (large) bracketed paste; `opts` is the (currently sparse) paste
+-- context table Neovim may pass. We only transform a complete, single-shot
 -- paste (`phase == -1`) into a capable lex buffer: a chunked paste has no
 -- whole-clipboard view to re-anchor, and the server transform is whole-text.
 -- Everything else (other filetypes, no client, no capability, chunked, empty)
 -- defers to the captured native handler unchanged.
-local function smart_paste(lines, phase)
+--
+-- `opts` is accepted and forwarded verbatim on every path so the native handler
+-- always receives the same paste context it would without the shim, preserving
+-- the full `vim.paste(lines, phase, opts)` contract.
+local function smart_paste(lines, phase, opts)
   local bufnr = vim.api.nvim_get_current_buf()
 
   if phase ~= -1 then
-    return native_paste(lines, phase)
+    return native_paste(lines, phase, opts)
   end
 
   local client = get_capable_client(bufnr)
   if not client then
-    return native_paste(lines, phase)
+    return native_paste(lines, phase, opts)
   end
 
   -- Reconstruct the raw clipboard text. `vim.paste` already stripped the
@@ -107,18 +117,18 @@ local function smart_paste(lines, phase)
   -- clipboard verbatim (the transform owns indentation, not us).
   local pasted_text = table.concat(lines, "\n")
   if pasted_text == "" then
-    return native_paste(lines, phase)
+    return native_paste(lines, phase, opts)
   end
 
   local transformed = prepare(client, bufnr, pasted_text)
   if transformed == nil then
     -- Request failed/timed out — native paste with the original text.
-    return native_paste(lines, phase)
+    return native_paste(lines, phase, opts)
   end
 
   -- Splice the re-anchored text in via the native handler so cursor
   -- placement, undo blocks, and register semantics stay Neovim's job.
-  return native_paste(vim.split(transformed, "\n", { plain = true }), phase)
+  return native_paste(vim.split(transformed, "\n", { plain = true }), phase, opts)
 end
 
 -- Install the smart-paste override. Idempotent: a second call is a no-op (we
