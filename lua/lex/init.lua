@@ -14,6 +14,7 @@ local lex_debug = require("lex.debug")
 local commands = require("lex.commands")
 local treesitter = require("lex.treesitter")
 local trust_prompt = require("lex.trust_prompt")
+local smart_paste = require("lex.smart_paste")
 
 local M = {}
 
@@ -233,6 +234,12 @@ function M.setup(opts)
 
   -- Setup user commands (global, not buffer-specific)
   commands.setup()
+
+  -- Override vim.paste for smart paste (#82). The override is global but
+  -- gates internally on a capable lexd-lsp client, so non-lex buffers and
+  -- lex buffers without the `lexPreparePaste` capability fall through to
+  -- native paste untouched.
+  smart_paste.setup()
 
   -- Setup autocommands for .lex files
   local augroup = vim.api.nvim_create_augroup("LexPlugin", { clear = true })
