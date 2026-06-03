@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+## 0.12.0 - 2026-06-03
+
+Smart paste: re-anchor pasted text to the caret's structural context via the lexd-lsp lex/preparePaste request (#82)
+
 ## 0.11.1 - 2026-06-01
 
 - Migrate changelog handling to the fragment-directory model
