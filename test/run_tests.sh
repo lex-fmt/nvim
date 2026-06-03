@@ -48,6 +48,7 @@ TESTS=(
     test_table_highlighting.lua
     test_table_navigation.lua
     test_lsp_reorder_footnotes.lua
+    test_lsp_smart_paste.lua
     test_lsp_extract_to_include.lua
     test_lsp_diagnostics.lua
     test_lsp_label_policy.lua
