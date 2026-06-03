@@ -109,18 +109,44 @@ vim.wait(2000, function()
   return buf:find("deep one", 1, true) ~= nil
 end, 50)
 
-local content = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+local content = table.concat(lines, "\n")
 
--- The pasted lines must appear re-anchored: not at the original 8-space
--- indent. The server re-anchors to the session content indent (4 spaces).
-if content:find("        deep one", 1, true) then
-  print("TEST_FAILED: pasted text kept its original 8-space indent (not re-anchored)")
+-- Locate the two pasted lines and capture their exact leading indent.
+local function indent_of(needle)
+  for _, l in ipairs(lines) do
+    local lead = l:match("^(%s*)" .. needle .. "$")
+    if lead then
+      return lead
+    end
+  end
+  return nil
+end
+
+local indent_one = indent_of("deep one")
+local indent_two = indent_of("deep two")
+
+if indent_one == nil or indent_two == nil then
+  print("TEST_FAILED: pasted text did not land in the buffer")
   print("content:\n" .. content)
   vim.cmd("cquit 1")
 end
 
-if not content:find("deep one", 1, true) or not content:find("deep two", 1, true) then
-  print("TEST_FAILED: pasted text did not land in the buffer")
+-- Re-anchoring must (a) strip the clipboard's original 8-space indent and
+-- (b) apply a single common anchor to both lines (the dedent collapses the
+-- uniform 8-space prefix to one offset). Asserting the exact resulting
+-- indent — not merely "not 8 spaces" — catches a server that returns the
+-- block at the wrong column.
+if indent_one ~= indent_two then
+  print("TEST_FAILED: pasted lines got different indents (re-anchor not uniform): "
+    .. ("[%q] vs [%q]"):format(indent_one, indent_two))
+  print("content:\n" .. content)
+  vim.cmd("cquit 1")
+end
+
+if #indent_one >= 8 then
+  print("TEST_FAILED: pasted text was not dedented from its original 8-space indent (got "
+    .. tostring(#indent_one) .. " leading spaces)")
   print("content:\n" .. content)
   vim.cmd("cquit 1")
 end
