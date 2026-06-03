@@ -66,16 +66,35 @@ local function prepare(client, bufnr, pasted_text)
     pastedText = pasted_text,
   }
 
-  -- Synchronous request: `vim.paste` is called inline on the paste keystroke,
-  -- so we cannot defer. 1s budget mirrors the interactive LSP calls elsewhere;
-  -- a slow/hung server must not wedge the editor — on timeout we fall through
-  -- to native paste. `vim.lsp.buf_request_sync` is the non-deprecated sync
-  -- path; it returns a per-client-id map of `{ result?, err? }`.
-  local responses, err = vim.lsp.buf_request_sync(bufnr, PREPARE_PASTE, params, 1000)
-  if err or type(responses) ~= "table" then
+  -- Synchronous-by-waiting request scoped to *this* client only. `vim.paste`
+  -- is called inline on the paste keystroke, so we cannot defer; we issue the
+  -- async `client:request` and pump the loop with `vim.wait` until it answers
+  -- or the 1s budget elapses. A slow/hung server must not wedge the editor —
+  -- on timeout we cancel and fall through to native paste.
+  --
+  -- We deliberately do NOT use `vim.lsp.buf_request_sync`: it broadcasts the
+  -- custom `lex/preparePaste` method to every client attached to the buffer
+  -- and waits on all of them, so an unrelated LSP that doesn't implement it
+  -- could burn the whole timeout. We already resolved the target `client`, so
+  -- query only it.
+  local done, response
+  local ok, request_id = client:request(PREPARE_PASTE, params, function(err, result)
+    done = true
+    response = { err = err, result = result }
+  end, bufnr)
+
+  if not ok then
     return nil
   end
-  local response = responses[client.id]
+
+  if not vim.wait(1000, function() return done end, 10) then
+    -- Timed out: cancel the in-flight request so the handler can't fire late.
+    if request_id then
+      pcall(function() client:cancel_request(request_id) end)
+    end
+    return nil
+  end
+
   if not response or response.err or type(response.result) ~= "table" then
     return nil
   end
