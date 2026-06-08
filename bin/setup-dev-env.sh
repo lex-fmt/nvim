@@ -1,0 +1,1 @@
+../.release/bin/setup-dev-env.sh
