@@ -14,6 +14,7 @@ NONE_INIT_TESTS=(
     test_injections.lua
     test_table_highlighting.lua
     test_format_on_save.lua
+    test_theme.lua
 )
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -54,6 +55,7 @@ TESTS=(
     test_lsp_label_policy.lua
     test_lsp_range_formatting.lua
     test_format_on_save.lua
+    test_theme.lua
 )
 
 total=${#TESTS[@]}
