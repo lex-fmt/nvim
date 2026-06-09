@@ -111,6 +111,13 @@ assert_eq(hex(got_light_title.fg), light_dt.fg, "monochrome/light: DocumentTitle
 assert_eq(got_light_title.bold or false, light_dt.bold or false, "monochrome: DocumentTitle bold")
 assert_eq(got_light_title.underline or false, light_dt.underline or false, "monochrome: DocumentTitle underline")
 
+-- italic is exercised separately: DocumentTitle carries bold/underline but not
+-- italic, so assert italic against a rule that actually sets it (DocumentSubtitle).
+local light_dst = find_rule("light", "DocumentSubtitle")
+assert(light_dst, "fixture: DocumentSubtitle rule must exist in light mode")
+local got_light_subtitle = vim.api.nvim_get_hl(0, { name = "@lsp.type.DocumentSubtitle" })
+assert_eq(got_light_subtitle.italic or false, light_dst.italic or false, "monochrome: DocumentSubtitle italic")
+
 -- A rule carrying bg must propagate bg too (VerbatimContent has a code bg).
 local verbatim = find_rule("light", "VerbatimContent")
 if verbatim and verbatim.bg then
@@ -137,11 +144,18 @@ if kw_mono.fg == nil then
 end
 
 -- Unknown / nil theme name falls through to the monochrome branch (the else).
+-- Capture the concrete monochrome result, then call with nil and assert the
+-- dispatch lands on the SAME concrete group — i.e. nil routes to monochrome,
+-- not native. (Note: the native path registers @keyword.lex with default=true,
+-- so it cannot overwrite an already-concrete group; the dispatch invariant we
+-- can assert robustly is monochrome-equivalence, not link-clobbering.)
+local kw_mono_ref = vim.api.nvim_get_hl(0, { name = "@keyword.lex" })
 theme.apply_treesitter(nil)
 local kw_default = vim.api.nvim_get_hl(0, { name = "@keyword.lex", link = true })
 if kw_default.link ~= nil then
   fail("apply_treesitter(nil): default branch should be monochrome (concrete), not a link")
 end
+assert_eq(kw_default.fg, kw_mono_ref.fg, "apply_treesitter(nil): default branch matches monochrome fg")
 
 print("TEST_PASSED: theme module native/monochrome apply + dispatch")
 vim.cmd("qall!")
