@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   release:
-    uses: arthur-debert/release/.github/workflows/nvim-plugin.yml@v2
+    uses: arthur-debert/release/.github/workflows/nvim-plugin.yml@v3
     with:
       version: ${{ inputs.version }}
       # version-file: the canonical Lua plugin convention is to
