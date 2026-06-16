@@ -1,0 +1,1 @@
+- test(binary): cover ensure_binary path-as-version short-circuit, nil/empty version guard, unsupported-OS and arch-fallback branches

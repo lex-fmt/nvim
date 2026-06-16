@@ -70,6 +70,64 @@ add_test('selects architecture specific assets', function()
   assert_true(select_asset('windows', 'amd64').filename == 'lexd-lsp-x86_64-pc-windows-msvc.zip', 'windows amd64 asset mismatch')
 end)
 
+add_test('windows arm64 falls back to amd64 asset', function()
+  -- arm64 Windows isn't built; the table lookup misses and we fall
+  -- through to the amd64 zip rather than returning nil. Documenting
+  -- the contract here so a future arm64 build doesn't silently change
+  -- platform behaviour for windows arm64 users.
+  local select_asset = binary._select_asset_for_testing
+  local asset = select_asset('windows', 'arm64')
+  assert_true(asset ~= nil, 'windows/arm64 should fall back, not return nil')
+  assert_true(asset.filename == 'lexd-lsp-x86_64-pc-windows-msvc.zip', 'windows arm64 should resolve to amd64 zip')
+  assert_true(asset.kind == 'zip', 'windows fallback should still be zip-kind')
+end)
+
+add_test('selects amd64 when arch is unknown or empty', function()
+  -- normalized_arch defaults to amd64 for anything it can't classify.
+  -- This is the hot path for a user on (say) an i686 box or a kernel
+  -- whose `uname -m` we don't recognise — we'd rather try amd64 than
+  -- crash with nil.
+  local select_asset = binary._select_asset_for_testing
+  assert_true(select_asset('linux', 'i686').filename == 'lexd-lsp-x86_64-unknown-linux-gnu.tar.gz', 'unknown arch should pick amd64')
+  assert_true(select_asset('linux', '').filename == 'lexd-lsp-x86_64-unknown-linux-gnu.tar.gz', 'empty arch should pick amd64')
+  assert_true(select_asset('linux', nil).filename == 'lexd-lsp-x86_64-unknown-linux-gnu.tar.gz', 'nil arch should pick amd64')
+end)
+
+add_test('returns nil for unsupported OS', function()
+  -- BSDs aren't in the platform table. ensure_binary's caller treats a
+  -- nil asset as "no auto-download path" and falls back to lexd-lsp on
+  -- PATH — that's the contract we want to preserve.
+  local select_asset = binary._select_asset_for_testing
+  assert_true(select_asset('freebsd', 'amd64') == nil, 'freebsd has no asset')
+  assert_true(select_asset('', 'amd64') == nil, 'empty os has no asset')
+end)
+
+add_test('ensure_binary rejects nil and empty version', function()
+  -- Setup flow can hit this when shared/lex-deps.json is missing AND
+  -- the user passed lex_lsp_version = "". ensure_binary must refuse so
+  -- resolve_lsp_cmd falls back to `lexd-lsp` on PATH rather than
+  -- writing the empty string into a "lexd-lsp-" filename.
+  assert_true(binary.ensure_binary(nil) == nil, 'nil version returns nil')
+  assert_true(binary.ensure_binary('') == nil, 'empty version returns nil')
+end)
+
+add_test('ensure_binary returns existing file path verbatim', function()
+  -- When opts.lex_lsp_version is itself a path to a binary (the
+  -- LEX_LSP_PATH-style explicit override), ensure_binary short-circuits
+  -- and returns it without trying to interpret it as a tag. Guards
+  -- against a regression where the path-as-version case gets confused
+  -- with a missing-binary download attempt.
+  --
+  -- We park the fake binary under a temp_plugin_root() so the registered
+  -- cleanup path picks it up even if the assertion below errors.
+  local root = temp_plugin_root()
+  local tmp = root .. '/fake_binary'
+  make_fake_binary(tmp)
+  -- No test overrides: we want the real filereadable check.
+  local resolved = binary.ensure_binary(tmp)
+  assert_true(resolved == tmp, 'existing path should pass through unchanged')
+end)
+
 add_test('finds extracted binary inside nested directories', function()
   local tmp = vim.fn.tempname()
   vim.fn.mkdir(tmp, 'p')
