@@ -117,12 +117,15 @@ add_test('ensure_binary returns existing file path verbatim', function()
   -- and returns it without trying to interpret it as a tag. Guards
   -- against a regression where the path-as-version case gets confused
   -- with a missing-binary download attempt.
-  local tmp = vim.fn.tempname()
+  --
+  -- We park the fake binary under a temp_plugin_root() so the registered
+  -- cleanup path picks it up even if the assertion below errors.
+  local root = temp_plugin_root()
+  local tmp = root .. '/fake_binary'
   make_fake_binary(tmp)
   -- No test overrides: we want the real filereadable check.
   local resolved = binary.ensure_binary(tmp)
   assert_true(resolved == tmp, 'existing path should pass through unchanged')
-  vim.fn.delete(tmp)
 end)
 
 add_test('finds extracted binary inside nested directories', function()
