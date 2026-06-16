@@ -4,6 +4,11 @@
 
 ## Unreleased
 
+## 0.12.1 - 2026-06-16
+
+- ci: migrate release reusable-workflow callers from @v2 to @v3
+Add unit tests for the theme module (native/monochrome apply + dispatch)
+
 ## 0.12.0 - 2026-06-03
 
 Smart paste: re-anchor pasted text to the caret's structural context via the lexd-lsp lex/preparePaste request (#82)
