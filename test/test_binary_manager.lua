@@ -51,9 +51,9 @@ end
 add_test('reuses existing binary', function()
   local root = temp_plugin_root()
   local version = 'v9.9.9'
-  local bin_dir = root .. '/bin'
-  vim.fn.mkdir(bin_dir, 'p')
-  local existing = string.format('%s/lexd-lsp-%s%s', bin_dir, version, suffix)
+  local resources_dir = root .. '/resources'
+  vim.fn.mkdir(resources_dir, 'p')
+  local existing = string.format('%s/lexd-lsp-%s%s', resources_dir, version, suffix)
   make_fake_binary(existing)
   binary._set_test_overrides({ plugin_root = root })
   local resolved = binary.ensure_binary(version)

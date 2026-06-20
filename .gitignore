@@ -42,11 +42,13 @@ luac.out
 .DS_Store
 
 # fetch-deps stamps and downloaded resources
+# All fetched lex artifacts (lexd-lsp binary + compiled tree-sitter parser)
+# live here; bin/ is tooling-only.
 .deps
 resources
 
-# Downloaded binaries and compiled parsers
-# Allow bin/<verb> thin callers (per arthur-debert/release).
+# bin/ is a tooling dir (release-managed shims); ignore everything except the
+# canonical bin/<verb> thin callers (per arthur-debert/release).
 /bin/*
 !/bin/check
 !/bin/changelog

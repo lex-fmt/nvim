@@ -131,12 +131,14 @@ end
 function M.ensure_parser(opts)
   opts = opts or {}
   local plugin_root = get_plugin_root()
-  local bin_dir = plugin_root .. "/bin"
+  -- resources/ is the single home for fetched lex artifacts (deps.json fetches
+  -- the lexd-lsp binary + tree-sitter sources here too); bin/ is tooling-only.
+  local resources_dir = plugin_root .. "/resources"
 
   -- Local dev path: compile from source tree directly
   if opts.path then
     local src_dir = opts.path .. "/src"
-    local so_path = bin_dir .. "/lex-dev.so"
+    local so_path = resources_dir .. "/lex-dev.so"
     return M.compile(src_dir, so_path)
   end
 
@@ -151,7 +153,7 @@ function M.ensure_parser(opts)
   end
 
   -- Check if already compiled for this version
-  local so_path = bin_dir .. "/lex-" .. version .. ".so"
+  local so_path = resources_dir .. "/lex-" .. version .. ".so"
   if vim.fn.filereadable(so_path) == 1 then
     return so_path
   end
