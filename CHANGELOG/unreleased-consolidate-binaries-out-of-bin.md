@@ -1,0 +1,1 @@
+- Download lexd-lsp and compile the tree-sitter parser into resources/ instead of bin/

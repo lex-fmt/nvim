@@ -1,6 +1,8 @@
 -- Binary manager used by the Neovim plugin. Responsible for downloading the
--- correct lexd-lsp release asset into ${PLUGIN_ROOT}/bin/ and returning the path
--- so the LSP client can spawn it. Binaries are versioned (lexd-lsp-vX.Y.Z) to
+-- correct lexd-lsp release asset into ${PLUGIN_ROOT}/resources/ and returning
+-- the path so the LSP client can spawn it. resources/ is the single home for
+-- all fetched lex artifacts (build-time deps.json fetches there too); bin/ is
+-- reserved for tooling shims. Binaries are versioned (lexd-lsp-vX.Y.Z) to
 -- keep upgrades atomic and the download uses GitHub release artifacts
 -- (tar.gz+zip). The helper falls back to the latest release if the requested
 -- version cannot be downloaded.
@@ -226,12 +228,12 @@ local function ensure_binary(version)
   end
 
   local plugin_root = get_plugin_root()
-  local bin_dir = plugin_root .. '/bin'
-  ensure_dir(bin_dir)
+  local resources_dir = plugin_root .. '/resources'
+  ensure_dir(resources_dir)
 
   local suffix = IS_WINDOWS and '.exe' or ''
   local filename = string.format('lexd-lsp-%s%s', version, suffix)
-  local binary_path = bin_dir .. '/' .. filename
+  local binary_path = resources_dir .. '/' .. filename
 
   if vim.fn.filereadable(binary_path) == 1 then
     return binary_path
