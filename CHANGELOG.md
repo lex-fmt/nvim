@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+## 0.12.2 - 2026-06-20
+
+- test(binary): cover ensure_binary path-as-version short-circuit, nil/empty version guard, unsupported-OS and arch-fallback branches
+
 ## 0.12.1 - 2026-06-16
 
 - ci: migrate release reusable-workflow callers from @v2 to @v3
