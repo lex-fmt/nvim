@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+## 0.12.3 - 2026-06-20
+
+- Download lexd-lsp and compile the tree-sitter parser into resources/ instead of bin/
+
 ## 0.12.2 - 2026-06-20
 
 - test(binary): cover ensure_binary path-as-version short-circuit, nil/empty version guard, unsupported-OS and arch-fallback branches
